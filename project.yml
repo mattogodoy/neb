@@ -1,0 +1,33 @@
+name: Neb
+options:
+  bundleIdPrefix: com.neb
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  NebCore:
+    path: NebCore
+
+targets:
+  Neb:
+    type: application
+    platform: macOS
+    sources:
+      - Neb
+    dependencies:
+      - package: NebCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.neb.app
+        PRODUCT_NAME: Neb
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "5.10"
+        CODE_SIGN_ENTITLEMENTS: Neb/Neb.entitlements
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.social-networking
+    entitlements:
+      path: Neb/Neb.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
