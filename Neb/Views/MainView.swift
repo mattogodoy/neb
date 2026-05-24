@@ -4,6 +4,7 @@ import NebCore
 struct MainView: View {
     @Bindable var roomListViewModel: RoomListViewModel
     let roomServiceProvider: () -> any RoomServiceProtocol
+    var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
     @State private var showNewDM = false
     @State private var timelineViewModel: TimelineViewModel?
 
@@ -17,7 +18,11 @@ struct MainView: View {
         } detail: {
             if let room = roomListViewModel.selectedRoom,
                let vm = timelineViewModel {
-                TimelineView(viewModel: vm, roomName: room.name)
+                TimelineView(
+                    viewModel: vm,
+                    roomName: room.name,
+                    cryptoServiceProvider: cryptoServiceProvider
+                )
             } else {
                 ContentUnavailableView(
                     "No Conversation Selected",
