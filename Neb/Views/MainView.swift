@@ -3,7 +3,9 @@ import NebCore
 
 struct MainView: View {
     @Bindable var roomListViewModel: RoomListViewModel
+    let roomServiceProvider: () -> any RoomServiceProtocol
     @State private var showNewDM = false
+    @State private var timelineViewModel: TimelineViewModel?
 
     var body: some View {
         NavigationSplitView {
@@ -13,8 +15,9 @@ struct MainView: View {
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
         } detail: {
-            if let room = roomListViewModel.selectedRoom {
-                Text("Timeline for \(room.name)")
+            if let room = roomListViewModel.selectedRoom,
+               let vm = timelineViewModel {
+                TimelineView(viewModel: vm, roomName: room.name)
             } else {
                 ContentUnavailableView(
                     "No Conversation Selected",
@@ -24,6 +27,16 @@ struct MainView: View {
             }
         }
         .frame(minWidth: 700, minHeight: 500)
+        .onChange(of: roomListViewModel.selectedRoom?.id) { _, newID in
+            if let newID {
+                timelineViewModel = TimelineViewModel(
+                    roomID: newID,
+                    roomService: roomServiceProvider()
+                )
+            } else {
+                timelineViewModel = nil
+            }
+        }
         .sheet(isPresented: $showNewDM) {
             Text("New DM (placeholder)")
                 .frame(width: 300, height: 200)
