@@ -38,8 +38,14 @@ struct MainView: View {
             }
         }
         .sheet(isPresented: $showNewDM) {
-            Text("New DM (placeholder)")
-                .frame(width: 300, height: 200)
+            NewDMSheet(
+                viewModel: NewDMViewModel(roomService: roomServiceProvider()),
+                onCreated: { roomID in
+                    if let room = roomListViewModel.allRooms.first(where: { $0.id == roomID }) {
+                        roomListViewModel.selectRoom(room)
+                    }
+                }
+            )
         }
     }
 }
