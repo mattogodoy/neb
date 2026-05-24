@@ -4,6 +4,8 @@ import NebCore
 struct TimelineView: View {
     @Bindable var viewModel: TimelineViewModel
     let roomName: String
+    var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
+    @State private var showVerification = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,6 +38,24 @@ struct TimelineView: View {
             MessageComposerView(viewModel: viewModel)
         }
         .navigationTitle(roomName)
+        .toolbar {
+            if cryptoServiceProvider != nil {
+                ToolbarItem {
+                    Button(action: { showVerification = true }) {
+                        Image(systemName: "checkmark.shield")
+                    }
+                    .help("Verify Contact")
+                }
+            }
+        }
+        .sheet(isPresented: $showVerification) {
+            if let provider = cryptoServiceProvider {
+                ContactVerificationView(
+                    viewModel: VerificationViewModel(cryptoService: provider()),
+                    contactName: roomName
+                )
+            }
+        }
         .task {
             await viewModel.markAsRead()
         }
