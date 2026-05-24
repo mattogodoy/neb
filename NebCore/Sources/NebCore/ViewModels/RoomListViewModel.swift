@@ -26,10 +26,12 @@ public final class RoomListViewModel {
     }
 
     private let syncService: any SyncServiceProtocol
+    private let notificationService: (any NotificationServiceProtocol)?
     @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
 
-    public init(syncService: any SyncServiceProtocol) {
+    public init(syncService: any SyncServiceProtocol, notificationService: (any NotificationServiceProtocol)? = nil) {
         self.syncService = syncService
+        self.notificationService = notificationService
         startObserving()
     }
 
@@ -51,6 +53,7 @@ public final class RoomListViewModel {
             for await rooms in self.syncService.roomListStream() {
                 guard !Task.isCancelled else { break }
                 self.allRooms = rooms
+                await self.notificationService?.updateBadgeCount(self.totalUnreadCount)
             }
         }
     }
