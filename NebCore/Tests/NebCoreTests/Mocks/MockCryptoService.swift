@@ -50,9 +50,8 @@ final class MockCryptoService: CryptoServiceProtocol, @unchecked Sendable {
         }
     }
 
-    func recoveryKey() async throws -> String? {
-        "mock-recovery-key-1234-5678-abcd"
-    }
+    func hasKeyBackup() async throws -> Bool { true }
+    func recoverKeys(recoveryKey: String) async throws {}
 
     func emitState(_ state: VerificationState) {
         currentState = state

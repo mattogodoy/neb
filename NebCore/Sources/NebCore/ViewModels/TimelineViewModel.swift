@@ -51,6 +51,7 @@ public final class TimelineViewModel {
             for await messages in self.roomService.timelineStream(roomID: self.roomID) {
                 guard !Task.isCancelled else { break }
                 self.messages = messages
+                await self.markAsRead()
             }
         }
     }

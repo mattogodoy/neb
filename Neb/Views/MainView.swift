@@ -69,7 +69,8 @@ struct MainView: View {
             if let provider = cryptoServiceProvider {
                 DeviceVerificationView(
                     viewModel: VerificationViewModel(cryptoService: provider()),
-                    isAlreadyVerified: deviceVerificationStatus == .verified
+                    isAlreadyVerified: deviceVerificationStatus == .verified,
+                    cryptoService: provider()
                 )
             }
         }

@@ -69,8 +69,7 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
     public func sendReadReceipt(roomID: String, eventID: String) async throws {
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
         guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
-        let timeline = try await room.timeline()
-        try await timeline.sendReadReceipt(receiptType: .read, eventId: eventID)
+        try await room.markAsRead(receiptType: .read)
     }
 
     public func createDM(userID: String) async throws -> String {

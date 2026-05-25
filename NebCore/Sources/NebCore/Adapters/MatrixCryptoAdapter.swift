@@ -106,8 +106,19 @@ public final class MatrixCryptoAdapter: CryptoServiceProtocol, @unchecked Sendab
         }
     }
 
-    public func recoveryKey() async throws -> String? {
-        return nil
+    public func hasKeyBackup() async throws -> Bool {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        return try await client.encryption().backupExistsOnServer()
+    }
+
+    public func recoverKeys(recoveryKey: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        let encryption = client.encryption()
+        logger.info("Starting key recovery...")
+        try await encryption.recover(recoveryKey: recoveryKey)
+        logger.info("Key recovery complete, waiting for E2EE initialization...")
+        await encryption.waitForE2eeInitializationTasks()
+        logger.info("E2EE initialization complete")
     }
 
     private static func mapVerificationState(_ state: MatrixRustSDK.VerificationState) -> DeviceVerificationStatus {

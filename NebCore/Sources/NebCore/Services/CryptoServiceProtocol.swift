@@ -15,5 +15,6 @@ public protocol CryptoServiceProtocol: Sendable {
     func cancelVerification() async throws
     func verificationStateStream() -> AsyncStream<VerificationState>
     func deviceVerificationStatusStream() -> AsyncStream<DeviceVerificationStatus>
-    func recoveryKey() async throws -> String?
+    func hasKeyBackup() async throws -> Bool
+    func recoverKeys(recoveryKey: String) async throws
 }
