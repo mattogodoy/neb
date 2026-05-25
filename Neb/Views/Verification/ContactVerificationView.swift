@@ -6,6 +6,7 @@ struct ContactVerificationView: View {
     let userID: String
     let displayName: String
     @Environment(\.dismiss) private var dismiss
+    @State private var isConfirming = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -127,16 +128,24 @@ struct ContactVerificationView: View {
                 }
             }
 
-            HStack(spacing: 12) {
-                Button("They Match") {
-                    Task { await viewModel.confirmEmoji() }
-                }
-                .buttonStyle(.borderedProminent)
+            if isConfirming {
+                ProgressView()
+                Text("Confirming...")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 12) {
+                    Button("They Match") {
+                        isConfirming = true
+                        Task { await viewModel.confirmEmoji() }
+                    }
+                    .buttonStyle(.borderedProminent)
 
-                Button("They Don't Match") {
-                    Task { await viewModel.declineEmoji() }
+                    Button("They Don't Match") {
+                        Task { await viewModel.declineEmoji() }
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

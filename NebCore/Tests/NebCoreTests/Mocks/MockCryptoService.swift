@@ -50,6 +50,7 @@ final class MockCryptoService: CryptoServiceProtocol, @unchecked Sendable {
         }
     }
 
+    func isUserVerified(userID: String) async -> Bool { false }
     func hasKeyBackup() async throws -> Bool { true }
     func recoverKeys(recoveryKey: String) async throws {}
 

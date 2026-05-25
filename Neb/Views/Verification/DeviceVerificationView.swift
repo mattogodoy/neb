@@ -12,6 +12,7 @@ struct DeviceVerificationView: View {
     @State private var isRecovering = false
     @State private var recoveryError: String?
     @State private var recoveryComplete = false
+    @State private var isConfirming = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -195,16 +196,24 @@ struct DeviceVerificationView: View {
                 }
             }
 
-            HStack(spacing: 12) {
-                Button("They Match") {
-                    Task { await viewModel.confirmEmoji() }
-                }
-                .buttonStyle(.borderedProminent)
+            if isConfirming {
+                ProgressView()
+                Text("Confirming...")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 12) {
+                    Button("They Match") {
+                        isConfirming = true
+                        Task { await viewModel.confirmEmoji() }
+                    }
+                    .buttonStyle(.borderedProminent)
 
-                Button("They Don't Match") {
-                    Task { await viewModel.declineEmoji() }
+                    Button("They Don't Match") {
+                        Task { await viewModel.declineEmoji() }
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

@@ -7,6 +7,7 @@ struct TimelineView: View {
     var directUserID: String?
     var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
     @State private var showVerification = false
+    @State private var isContactVerified = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,11 +41,14 @@ struct TimelineView: View {
         }
         .navigationTitle(roomName)
         .toolbar {
-            if let userID = directUserID, cryptoServiceProvider != nil {
+            if let _ = directUserID, cryptoServiceProvider != nil {
                 ToolbarItem {
                     Button(action: { showVerification = true }) {
-                        Label("Verify \(roomName)", systemImage: "person.badge.shield.checkmark")
-                            .foregroundStyle(.orange)
+                        Label(
+                            isContactVerified ? "\(roomName) Verified" : "Verify \(roomName)",
+                            systemImage: isContactVerified ? "person.badge.shield.checkmark.fill" : "person.badge.shield.checkmark"
+                        )
+                        .foregroundStyle(isContactVerified ? .green : .orange)
                     }
                 }
             }
@@ -60,6 +64,17 @@ struct TimelineView: View {
         }
         .task {
             await viewModel.markAsRead()
+            await checkContactVerification()
         }
+        .onChange(of: showVerification) { _, isShowing in
+            if !isShowing {
+                Task { await checkContactVerification() }
+            }
+        }
+    }
+
+    private func checkContactVerification() async {
+        guard let userID = directUserID, let provider = cryptoServiceProvider else { return }
+        isContactVerified = await provider().isUserVerified(userID: userID)
     }
 }

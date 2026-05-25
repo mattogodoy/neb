@@ -106,6 +106,16 @@ public final class MatrixCryptoAdapter: CryptoServiceProtocol, @unchecked Sendab
         }
     }
 
+    public func isUserVerified(userID: String) async -> Bool {
+        guard let client = clientProvider() else { return false }
+        do {
+            let identity = try await client.encryption().userIdentity(userId: userID, fallbackToServer: false)
+            return identity?.isVerified() ?? false
+        } catch {
+            return false
+        }
+    }
+
     public func hasKeyBackup() async throws -> Bool {
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
         return try await client.encryption().backupExistsOnServer()
