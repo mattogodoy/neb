@@ -65,3 +65,40 @@ private func styled(_ text: String, traits: NSFontDescriptor.SymbolicTraits = []
     let markdown = MarkdownConverter.convert(result)
     #expect(markdown == "hello **bold** world")
 }
+
+@Test func convertsCodeBlock() {
+    let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+    let input = NSAttributedString(string: "let x = 1\nlet y = 2", attributes: [
+        .font: monoFont,
+        .init("NebBlockType"): "codeBlock"
+    ])
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "```\nlet x = 1\nlet y = 2\n```")
+}
+
+@Test func convertsQuote() {
+    let input = NSAttributedString(string: "wise words", attributes: [
+        .font: NSFont.systemFont(ofSize: 13),
+        .init("NebBlockType"): "quote"
+    ])
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "> wise words")
+}
+
+@Test func convertsBulletedList() {
+    let input = NSAttributedString(string: "item one\nitem two", attributes: [
+        .font: NSFont.systemFont(ofSize: 13),
+        .init("NebBlockType"): "bulletList"
+    ])
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "- item one\n- item two")
+}
+
+@Test func convertsNumberedList() {
+    let input = NSAttributedString(string: "first\nsecond", attributes: [
+        .font: NSFont.systemFont(ofSize: 13),
+        .init("NebBlockType"): "numberedList"
+    ])
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "1. first\n2. second")
+}

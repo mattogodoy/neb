@@ -11,6 +11,29 @@ public enum MarkdownConverter {
             let text = (attributedString.string as NSString).substring(with: range)
             guard !text.isEmpty else { return }
 
+            // Check for block-level types
+            if let blockType = attrs[.init("NebBlockType")] as? String {
+                switch blockType {
+                case "codeBlock":
+                    result += "```\n\(text)\n```"
+                    return
+                case "quote":
+                    let lines = text.components(separatedBy: "\n")
+                    result += lines.map { "> \($0)" }.joined(separator: "\n")
+                    return
+                case "bulletList":
+                    let lines = text.components(separatedBy: "\n")
+                    result += lines.map { "- \($0)" }.joined(separator: "\n")
+                    return
+                case "numberedList":
+                    let lines = text.components(separatedBy: "\n")
+                    result += lines.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
+                    return
+                default:
+                    break
+                }
+            }
+
             let font = attrs[.font] as? NSFont
             let traits = font?.fontDescriptor.symbolicTraits ?? []
             let isMonospace = traits.contains(.monoSpace)
