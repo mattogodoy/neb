@@ -127,10 +127,12 @@ public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
                 var isDirect = false
                 var unread: UInt64 = 0
                 var directUserID: String? = nil
+                var avatarURL: String? = nil
                 do {
                     let info = try await room.roomInfo()
                     isDirect = info.isDirect
                     unread = info.numUnreadNotifications
+                    avatarURL = info.avatarUrl
 
                     if isDirect {
                         let myUserID = try? self.clientProvider()?.userId()
@@ -139,6 +141,9 @@ public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
                             for member in chunk {
                                 if member.userId != myUserID && member.membership == .join {
                                     directUserID = member.userId
+                                    if avatarURL == nil {
+                                        avatarURL = member.avatarUrl
+                                    }
                                     break
                                 }
                             }
@@ -152,6 +157,7 @@ public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
                 nebRooms.append(NebRoom(
                     id: roomID,
                     name: name,
+                    avatarURL: avatarURL,
                     lastMessage: nil,
                     lastMessageTimestamp: nil,
                     unreadCount: UInt(unread),
