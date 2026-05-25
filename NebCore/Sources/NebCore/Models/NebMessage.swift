@@ -25,6 +25,7 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
     public var senderDisplayName: String
     public var senderAvatarURL: String?
     public var body: String
+    public var formattedBody: String?
     public var timestamp: Date
     public var isOutgoing: Bool
     public var sendStatus: SendStatus
@@ -40,6 +41,7 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         senderDisplayName: String,
         senderAvatarURL: String? = nil,
         body: String,
+        formattedBody: String? = nil,
         timestamp: Date,
         isOutgoing: Bool,
         sendStatus: SendStatus = .sent,
@@ -54,6 +56,7 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         self.senderDisplayName = senderDisplayName
         self.senderAvatarURL = senderAvatarURL
         self.body = body
+        self.formattedBody = formattedBody
         self.timestamp = timestamp
         self.isOutgoing = isOutgoing
         self.sendStatus = sendStatus
