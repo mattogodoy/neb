@@ -4,21 +4,34 @@ import Foundation
 @Observable
 public final class TimelineViewModel {
     public private(set) var messages: [NebMessage] = []
+    public private(set) var typingUsers: [NebUser] = []
     public private(set) var isLoadingMore = false
     public var composerText: String = ""
 
     private let roomID: String
     private let roomService: any RoomServiceProtocol
+    private let typingService: (any TypingServiceProtocol)?
+    private let currentUserID: String?
     @ObservationIgnored nonisolated(unsafe) private var timelineTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) private var typingTask: Task<Void, Never>?
 
-    public init(roomID: String, roomService: any RoomServiceProtocol) {
+    public init(
+        roomID: String,
+        roomService: any RoomServiceProtocol,
+        typingService: (any TypingServiceProtocol)? = nil,
+        currentUserID: String? = nil
+    ) {
         self.roomID = roomID
         self.roomService = roomService
+        self.typingService = typingService
+        self.currentUserID = currentUserID
         startObserving()
+        startTypingObserving()
     }
 
     deinit {
         timelineTask?.cancel()
+        typingTask?.cancel()
     }
 
     public func sendMessage(_ body: String) async {
@@ -58,6 +71,21 @@ public final class TimelineViewModel {
                 guard !Task.isCancelled else { break }
                 self.messages = messages
                 await self.markAsRead()
+            }
+        }
+    }
+
+    private func startTypingObserving() {
+        guard let typingService else { return }
+        typingTask = Task { [weak self] in
+            guard let self else { return }
+            for await users in typingService.typingUsersStream(roomID: self.roomID) {
+                guard !Task.isCancelled else { break }
+                if let myID = self.currentUserID {
+                    self.typingUsers = users.filter { $0.id != myID }
+                } else {
+                    self.typingUsers = users
+                }
             }
         }
     }

@@ -71,3 +71,48 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 
     #expect(roomService.sentMessages.isEmpty)
 }
+
+@Test func receivesTypingUsers() async throws {
+    let roomService = MockRoomService()
+    let typingService = MockTypingService()
+    let vm = await TimelineViewModel(
+        roomID: "!room:x",
+        roomService: roomService,
+        typingService: typingService,
+        currentUserID: "@me:x"
+    )
+
+    try await Task.sleep(for: .milliseconds(10))
+
+    let alice = NebUser(id: "@alice:x", displayName: "Alice")
+    typingService.emitTypingUsers(roomID: "!room:x", users: [alice])
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    let typing = await vm.typingUsers
+    #expect(typing.count == 1)
+    #expect(typing.first?.id == "@alice:x")
+}
+
+@Test func filtersOutCurrentUser() async throws {
+    let roomService = MockRoomService()
+    let typingService = MockTypingService()
+    let vm = await TimelineViewModel(
+        roomID: "!room:x",
+        roomService: roomService,
+        typingService: typingService,
+        currentUserID: "@me:x"
+    )
+
+    try await Task.sleep(for: .milliseconds(10))
+
+    let me = NebUser(id: "@me:x", displayName: "Me")
+    let alice = NebUser(id: "@alice:x", displayName: "Alice")
+    typingService.emitTypingUsers(roomID: "!room:x", users: [me, alice])
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    let typing = await vm.typingUsers
+    #expect(typing.count == 1)
+    #expect(typing.first?.id == "@alice:x")
+}
