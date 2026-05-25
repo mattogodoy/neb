@@ -274,10 +274,14 @@ private struct BubbleShape: Shape {
 
 extension String {
     var isEmojiOnly: Bool {
-        guard !isEmpty else { return false }
-        let scalars = unicodeScalars
-        let emojiCount = scalars.filter { $0.properties.isEmoji && $0.value > 0x23 }.count
-        let nonEmojiCount = scalars.filter { !$0.properties.isEmoji && !$0.properties.isEmojiPresentation && !$0.properties.isJoinControl && $0 != "\u{FE0F}" && $0 != "\u{200D}" }.count
-        return emojiCount > 0 && emojiCount <= 3 && nonEmojiCount == 0
+        guard !isEmpty && count <= 3 else { return false }
+        return allSatisfy { $0.isEmoji }
+    }
+}
+
+private extension Character {
+    var isEmoji: Bool {
+        guard let scalar = unicodeScalars.first else { return false }
+        return scalar.properties.isEmoji && scalar.value > 0x23
     }
 }
