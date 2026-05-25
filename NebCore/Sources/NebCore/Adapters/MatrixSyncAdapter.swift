@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.neb.app", category: "Sync")
 public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private var syncService: MatrixRustSDK.SyncService?
-    private var roomListService: RoomListService?
+    public private(set) var roomListService: RoomListService?
     private var continuations: [UUID: AsyncStream<[NebRoom]>.Continuation] = [:]
     private var rooms: [Room] = []
     private var allRoomsList: RoomList?

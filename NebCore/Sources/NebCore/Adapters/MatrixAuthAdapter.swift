@@ -24,41 +24,50 @@ public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
     public func login(homeserverURL: String, username: String, password: String) async throws {
         setState(.loggingIn)
 
-        let dataDir = sessionDirectory.appendingPathComponent("data")
-        let cacheDir = sessionDirectory.appendingPathComponent("cache")
-        try? FileManager.default.removeItem(at: dataDir)
-        try? FileManager.default.removeItem(at: cacheDir)
+        // Only clear the session token, keep crypto/state stores for fast re-login
         try? FileManager.default.removeItem(at: sessionDirectory.appendingPathComponent("session.json"))
-        logger.info("Cleared old session data, logging in to \(homeserverURL) as \(username)")
+        logger.info("Logging in to \(homeserverURL) as \(username)")
 
-        let dataPath = dataDir.path
-        let cachePath = cacheDir.path
+        let dataPath = sessionDirectory.appendingPathComponent("data").path
+        let cachePath = sessionDirectory.appendingPathComponent("cache").path
 
-        let client = try await ClientBuilder()
-            .serverNameOrHomeserverUrl(serverNameOrUrl: homeserverURL)
-            .sessionPaths(dataPath: dataPath, cachePath: cachePath)
-            .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
-            .autoEnableCrossSigning(autoEnableCrossSigning: true)
-            .autoEnableBackups(autoEnableBackups: true)
-            .build()
+        do {
+            var t = ContinuousClock.now
+            let client = try await ClientBuilder()
+                .serverNameOrHomeserverUrl(serverNameOrUrl: homeserverURL)
+                .sessionPaths(dataPath: dataPath, cachePath: cachePath)
+                .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
+                .build()
+            logger.info("ClientBuilder.build() took \(ContinuousClock.now - t)")
 
-        try await client.login(
-            username: username,
-            password: password,
-            initialDeviceName: "Neb macOS",
-            deviceId: nil
-        )
+            t = ContinuousClock.now
+            try await client.login(
+                username: username,
+                password: password,
+                initialDeviceName: "Neb macOS",
+                deviceId: nil
+            )
+            logger.info("client.login() took \(ContinuousClock.now - t)")
 
-        self.client = client
-        try persistSession(from: client)
-        let userID = try client.userId()
-        logger.info("Login successful: \(userID)")
-        setState(.loggedIn(userID: userID))
+            self.client = client
+            try persistSession(from: client)
+            let userID = try client.userId()
+            logger.info("Login successful: \(userID)")
+            setState(.loggedIn(userID: userID))
+        } catch {
+            // Crypto store conflict — clear everything and let user retry
+            logger.error("Login failed: \(error.localizedDescription), clearing stores")
+            clearSessionData()
+            throw error
+        }
     }
 
     public func restoreSession() async throws -> Bool {
         let sessionFile = sessionDirectory.appendingPathComponent("session.json")
-        guard FileManager.default.fileExists(atPath: sessionFile.path) else { return false }
+        guard FileManager.default.fileExists(atPath: sessionFile.path) else {
+            logger.info("No session to restore")
+            return false
+        }
 
         let sessionData = try Data(contentsOf: sessionFile)
         guard let dict = try JSONSerialization.jsonObject(with: sessionData) as? [String: Any] else { return false }
@@ -70,6 +79,8 @@ public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
             let homeserverUrl = dict["homeserverUrl"] as? String,
             let slidingSyncVersionRaw = dict["slidingSyncVersion"] as? String
         else { return false }
+
+        logger.info("Restoring session for \(userId) on \(homeserverUrl)")
 
         let slidingSyncVersion: SlidingSyncVersion = slidingSyncVersionRaw == "native" ? .native : .none
         let refreshToken = dict["refreshToken"] as? String
@@ -88,22 +99,36 @@ public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
         let dataPath = sessionDirectory.appendingPathComponent("data").path
         let cachePath = sessionDirectory.appendingPathComponent("cache").path
 
-        let client = try await ClientBuilder()
-            .sessionPaths(dataPath: dataPath, cachePath: cachePath)
-            .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
-            .build()
+        do {
+            let t = ContinuousClock.now
+            let client = try await ClientBuilder()
+                .serverNameOrHomeserverUrl(serverNameOrUrl: homeserverUrl)
+                .sessionPaths(dataPath: dataPath, cachePath: cachePath)
+                .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
+                .build()
+            logger.info("Restore: build() took \(ContinuousClock.now - t)")
 
-        try await client.restoreSession(session: session)
-        self.client = client
-        setState(.loggedIn(userID: try client.userId()))
-        return true
+            let t2 = ContinuousClock.now
+            try await client.restoreSession(session: session)
+            logger.info("Restore: restoreSession() took \(ContinuousClock.now - t2)")
+
+            self.client = client
+            let userID = try client.userId()
+            logger.info("Session restored: \(userID)")
+            setState(.loggedIn(userID: userID))
+            return true
+        } catch {
+            logger.error("Session restore failed: \(error.localizedDescription), clearing stale data")
+            clearSessionData()
+            return false
+        }
     }
 
     public func logout() async throws {
         try await client?.logout()
         client = nil
-        let sessionFile = sessionDirectory.appendingPathComponent("session.json")
-        try? FileManager.default.removeItem(at: sessionFile)
+        clearSessionData()
+        logger.info("Logged out and cleared session data")
         setState(.loggedOut)
     }
 
@@ -119,6 +144,12 @@ public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
     private func setState(_ state: AuthState) {
         _authState = state
         continuation?.yield(state)
+    }
+
+    private func clearSessionData() {
+        try? FileManager.default.removeItem(at: sessionDirectory.appendingPathComponent("data"))
+        try? FileManager.default.removeItem(at: sessionDirectory.appendingPathComponent("cache"))
+        try? FileManager.default.removeItem(at: sessionDirectory.appendingPathComponent("session.json"))
     }
 
     private func persistSession(from client: Client) throws {

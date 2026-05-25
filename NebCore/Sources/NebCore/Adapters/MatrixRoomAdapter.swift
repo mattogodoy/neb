@@ -1,20 +1,39 @@
 import Foundation
 import MatrixRustSDK
+import os
+
+private let logger = Logger(subsystem: "com.neb.app", category: "Room")
 
 public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
+    private let roomListServiceProvider: () -> RoomListService?
+    private var activeTimelines: [String: TimelineHandle] = [:]
 
-    public init(clientProvider: @escaping () -> Client?) {
+    public init(clientProvider: @escaping () -> Client?, roomListServiceProvider: @escaping () -> RoomListService?) {
         self.clientProvider = clientProvider
+        self.roomListServiceProvider = roomListServiceProvider
     }
 
     public func timelineStream(roomID: String) -> AsyncStream<[NebMessage]> {
-        AsyncStream { [weak self] continuation in
+        activeTimelines.removeValue(forKey: roomID)
+
+        return AsyncStream { [weak self] continuation in
             guard let self else { return }
 
             Task {
-                guard let client = self.clientProvider() else { return }
-                guard let room = try? client.getRoom(roomId: roomID) else { return }
+                guard let client = self.clientProvider() else {
+                    logger.error("timelineStream: not logged in")
+                    return
+                }
+                if let rls = self.roomListServiceProvider() {
+                    try? await rls.subscribeToRooms(roomIds: [roomID])
+                    logger.info("Subscribed to room \(roomID)")
+                }
+
+                guard let room = try? client.getRoom(roomId: roomID) else {
+                    logger.error("timelineStream: room \(roomID) not found")
+                    return
+                }
 
                 let timeline = try await room.timeline()
                 let myUserID = (try? client.userId()) ?? ""
@@ -24,8 +43,16 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
                     myUserID: myUserID,
                     continuation: continuation
                 )
-                let _ = await timeline.addListener(listener: listener)
+                let listenerHandle = await timeline.addListener(listener: listener)
 
+                self.activeTimelines[roomID] = TimelineHandle(
+                    room: room,
+                    timeline: timeline,
+                    listener: listener,
+                    listenerHandle: listenerHandle
+                )
+
+                logger.info("Timeline listener active for \(roomID)")
                 let _ = try? await timeline.paginateBackwards(numEvents: 50)
             }
         }
@@ -75,6 +102,13 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
     }
 }
 
+private struct TimelineHandle {
+    let room: Room
+    let timeline: Timeline
+    let listener: NebTimelineListener
+    let listenerHandle: TaskHandle
+}
+
 private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
     private let roomID: String
     private let myUserID: String
@@ -119,14 +153,50 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             }
         }
 
+        if !items.isEmpty {
+            var eventCount = 0
+            var virtualCount = 0
+            var msgCount = 0
+            var encryptedCount = 0
+            var otherContentTypes: [String] = []
+            for item in items {
+                if let event = item.asEvent() {
+                    eventCount += 1
+                    switch event.content {
+                    case .msgLike(let ml):
+                        switch ml.kind {
+                        case .message: msgCount += 1
+                        case .unableToDecrypt: encryptedCount += 1
+                        default: otherContentTypes.append("msgLike-other")
+                        }
+                    default:
+                        otherContentTypes.append(String(describing: event.content).prefix(40).description)
+                    }
+                } else {
+                    virtualCount += 1
+                }
+            }
+            logger.info("Timeline \(self.roomID) raw: \(self.items.count) items, \(eventCount) events, \(msgCount) msg, \(encryptedCount) encrypted, \(virtualCount) virtual, other: \(otherContentTypes.joined(separator: ","))")
+        }
+
         let messages = items.compactMap { convertItem($0) }
+        logger.info("Timeline \(self.roomID): \(messages.count) messages")
         continuation.yield(messages)
     }
 
     private func convertItem(_ item: TimelineItem) -> NebMessage? {
         guard let event = item.asEvent() else { return nil }
         guard case .msgLike(let msgLike) = event.content else { return nil }
-        guard case .message(let msgContent) = msgLike.kind else { return nil }
+
+        let body: String
+        switch msgLike.kind {
+        case .message(let msgContent):
+            body = msgContent.body
+        case .unableToDecrypt:
+            body = "\u{1F512} Encrypted message (verify this device to decrypt)"
+        default:
+            return nil
+        }
 
         let eventID: String
         switch event.eventOrTransactionId {
@@ -149,7 +219,7 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             roomID: roomID,
             senderID: event.sender,
             senderDisplayName: senderName,
-            body: msgContent.body,
+            body: body,
             timestamp: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000),
             isOutgoing: event.isOwn
         )

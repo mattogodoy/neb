@@ -16,7 +16,7 @@ final class AppState {
     init() {
         let auth = MatrixAuthAdapter()
         let sync = MatrixSyncAdapter(clientProvider: { auth.getClient() })
-        let room = MatrixRoomAdapter(clientProvider: { auth.getClient() })
+        let room = MatrixRoomAdapter(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
         let crypto = MatrixCryptoAdapter(clientProvider: { auth.getClient() })
         let notification = MatrixNotificationAdapter()
 
