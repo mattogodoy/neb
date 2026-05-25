@@ -6,8 +6,10 @@ struct MainView: View {
     let roomServiceProvider: () -> any RoomServiceProtocol
     var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
+    var onLogout: (() -> Void)?
     @State private var showNewDM = false
     @State private var showDeviceVerification = false
+    @State private var showLogoutConfirmation = false
     @State private var timelineViewModel: TimelineViewModel?
 
     var body: some View {
@@ -45,6 +47,21 @@ struct MainView: View {
                     .foregroundStyle(deviceVerificationStatus == .verified ? .green : .orange)
                 }
             }
+            ToolbarItem(placement: .automatic) {
+                Menu {
+                    Button(role: .destructive, action: { showLogoutConfirmation = true }) {
+                        Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+            }
+        }
+        .alert("Log Out", isPresented: $showLogoutConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Log Out", role: .destructive) { onLogout?() }
+        } message: {
+            Text("You'll need to log in again and re-verify this device.")
         }
         .onChange(of: roomListViewModel.selectedRoom?.id) { _, newID in
             if let newID {

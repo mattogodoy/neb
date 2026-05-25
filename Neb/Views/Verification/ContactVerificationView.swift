@@ -9,27 +9,32 @@ struct ContactVerificationView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirming = false
     @State private var isAlreadyVerified = false
+    @State private var isCheckingStatus = true
 
     var body: some View {
         VStack(spacing: 20) {
             Group {
-                switch viewModel.state {
-                case .idle:
-                    idleView
-                case .waitingForAcceptance:
-                    waitingView
-                case .requested:
-                    requestedView
-                case .showingEmoji(let emoji):
-                    emojiView(emoji)
-                case .confirmed:
-                    confirmedView
-                case .failed(let reason):
-                    failedView(reason)
-                case .timedOut:
-                    timedOutView
-                case .cancelled:
-                    cancelledView
+                if isCheckingStatus {
+                    ProgressView()
+                } else {
+                    switch viewModel.state {
+                    case .idle:
+                        idleView
+                    case .waitingForAcceptance:
+                        waitingView
+                    case .requested:
+                        requestedView
+                    case .showingEmoji(let emoji):
+                        emojiView(emoji)
+                    case .confirmed:
+                        confirmedView
+                    case .failed(let reason):
+                        failedView(reason)
+                    case .timedOut:
+                        timedOutView
+                    case .cancelled:
+                        cancelledView
+                    }
                 }
             }
         }
@@ -37,6 +42,7 @@ struct ContactVerificationView: View {
         .frame(minWidth: 440, minHeight: 300)
         .task {
             isAlreadyVerified = await cryptoService?.isUserVerified(userID: userID) ?? false
+            isCheckingStatus = false
         }
     }
 

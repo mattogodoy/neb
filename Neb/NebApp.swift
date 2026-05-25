@@ -26,7 +26,10 @@ struct NebApp: App {
                                 roomListViewModel: roomListVM,
                                 roomServiceProvider: { appState.makeRoomService() },
                                 cryptoServiceProvider: { appState.makeCryptoService() },
-                                deviceVerificationStatus: appState.deviceVerificationStatus
+                                deviceVerificationStatus: appState.deviceVerificationStatus,
+                                onLogout: {
+                                    Task { await appState.loginViewModel.logout() }
+                                }
                             )
                         } else {
                             ProgressView("Starting sync...")

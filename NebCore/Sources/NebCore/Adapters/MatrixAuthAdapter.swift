@@ -37,6 +37,8 @@ public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
                 .serverNameOrHomeserverUrl(serverNameOrUrl: homeserverURL)
                 .sessionPaths(dataPath: dataPath, cachePath: cachePath)
                 .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
+                .autoEnableCrossSigning(autoEnableCrossSigning: true)
+                .autoEnableBackups(autoEnableBackups: true)
                 .build()
             logger.info("ClientBuilder.build() took \(ContinuousClock.now - t)")
 
