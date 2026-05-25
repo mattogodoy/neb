@@ -10,11 +10,9 @@ struct TimelineView: View {
     var homeserverURL: String = ""
     @State private var showVerification = false
     @State private var isContactVerified = false
-    @State private var isAtBottom = true
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack(alignment: .bottomTrailing) {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -58,58 +56,24 @@ struct TimelineView: View {
                                 .transition(.opacity)
                                 .id("typing-indicator")
                         }
-                        GeometryReader { geo in
-                            Color.clear.onChange(of: geo.frame(in: .named("timeline"))) { _, frame in
-                                let visible = frame.minY < geo.frame(in: .global).maxY + 50
-                                if visible != isAtBottom {
-                                    withAnimation(.easeOut(duration: 0.15)) {
-                                        isAtBottom = visible
-                                    }
-                                }
-                            }
-                        }
-                        .frame(height: 1)
-                        .id("scroll-bottom")
                     }
                     .padding(.vertical, 8)
                 }
-                .coordinateSpace(name: "timeline")
                 .defaultScrollAnchor(.bottom)
                 .onChange(of: viewModel.messages.last?.id) { _, newID in
-                    if let id = newID, isAtBottom {
+                    if let id = newID {
                         withAnimation(.easeOut(duration: 0.2)) {
                             proxy.scrollTo(id, anchor: .bottom)
                         }
                     }
                 }
                 .onChange(of: viewModel.typingUsers.isEmpty) { _, isEmpty in
-                    if !isEmpty && isAtBottom {
+                    if !isEmpty {
                         withAnimation(.easeOut(duration: 0.2)) {
                             proxy.scrollTo("typing-indicator", anchor: .bottom)
                         }
                     }
                 }
-
-                if !isAtBottom {
-                    Button(action: {
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            proxy.scrollTo("scroll-bottom", anchor: .bottom)
-                        }
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 32, height: 32)
-                            .background(Color(.darkGray))
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 8)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                }
-            }
             }
 
             Divider()
