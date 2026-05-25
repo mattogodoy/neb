@@ -23,6 +23,9 @@ struct TimelineView: View {
 
                         ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
                             let prev = index > 0 ? viewModel.messages[index - 1] : nil
+                            let next = index < viewModel.messages.count - 1 ? viewModel.messages[index + 1] : nil
+                            let first = isFirstInGroup(current: message, previous: prev)
+                            let last = isLastInGroup(current: message, next: next)
 
                             if shouldShowDaySeparator(current: message, previous: prev) {
                                 DaySeparatorView(date: message.timestamp)
@@ -30,12 +33,12 @@ struct TimelineView: View {
 
                             MessageBubbleView(
                                 message: message,
-                                isFirstInGroup: isFirstInGroup(current: message, previous: prev),
+                                groupPosition: groupPosition(isFirst: first, isLast: last),
                                 isDM: isDM,
                                 homeserverURL: homeserverURL
                             )
                             .padding(.horizontal, 12)
-                            .padding(.top, isFirstInGroup(current: message, previous: prev) ? 8 : 2)
+                            .padding(.top, first ? 8 : 2)
                             .id(message.id)
                         }
                     }
@@ -100,6 +103,23 @@ struct TimelineView: View {
         if current.timestamp.timeIntervalSince(prev.timestamp) > 300 { return true }
         if !Calendar.current.isDate(prev.timestamp, inSameDayAs: current.timestamp) { return true }
         return false
+    }
+
+    private func isLastInGroup(current: NebMessage, next: NebMessage?) -> Bool {
+        guard let next = next else { return true }
+        if next.senderID != current.senderID { return true }
+        if next.timestamp.timeIntervalSince(current.timestamp) > 300 { return true }
+        if !Calendar.current.isDate(next.timestamp, inSameDayAs: current.timestamp) { return true }
+        return false
+    }
+
+    private func groupPosition(isFirst: Bool, isLast: Bool) -> MessageGroupPosition {
+        switch (isFirst, isLast) {
+        case (true, true): return .alone
+        case (true, false): return .first
+        case (false, true): return .last
+        case (false, false): return .middle
+        }
     }
 
     private func shouldShowDaySeparator(current: NebMessage, previous: NebMessage?) -> Bool {

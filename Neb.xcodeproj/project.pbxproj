@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2D739C11FE3DC015AB192453 /* DaySeparatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */; };
 		383763D2559DE10C40EF481A /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5647AAC9B5E1CB3A8D2F0A /* AppState.swift */; };
 		49DF8E2527EB9AF7AD5F79DF /* ContactVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5217C2605D6443D4E97BC0E /* ContactVerificationView.swift */; };
 		5FCCBE4E5CC742BAD819F61C /* NebCore in Frameworks */ = {isa = PBXBuildFile; productRef = D655DA2A5A3350417BA89546 /* NebCore */; };
@@ -18,7 +19,9 @@
 		998F5A21992C15BE79A12299 /* MessageBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA124BC3A057C6747E22FE0E /* MessageBubbleView.swift */; };
 		A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCE3A05F93C5768B2871FAA /* NebApp.swift */; };
 		AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145BD912A2D89307D0EC7E9B /* SidebarView.swift */; };
+		AC51D684A1C8FB2F36BE89E5 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F865AEBE26F67E8EC78563 /* AvatarView.swift */; };
 		DBB867147261FEA66794B285 /* DeviceVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */; };
+		E3A35DBB96EC3C84FFAF2EBE /* ReadReceiptsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */; };
 		E3B1A9D501AAF165C9C88C9E /* RoomRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1409F45F78A380DDDA49B9C /* RoomRowView.swift */; };
 /* End PBXBuildFile section */
 
@@ -27,12 +30,15 @@
 		145BD912A2D89307D0EC7E9B /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		2B5647AAC9B5E1CB3A8D2F0A /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		3CAA00277FAEF93BECC66694 /* Neb.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Neb.entitlements; sourceTree = "<group>"; };
+		458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptsView.swift; sourceTree = "<group>"; };
 		6EB5117145C530E7DD757276 /* MessageComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageComposerView.swift; sourceTree = "<group>"; };
 		82C30D683D99BE5A348941CF /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		ABCE3A05F93C5768B2871FAA /* NebApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NebApp.swift; sourceTree = "<group>"; };
 		B1409F45F78A380DDDA49B9C /* RoomRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomRowView.swift; sourceTree = "<group>"; };
+		B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySeparatorView.swift; sourceTree = "<group>"; };
 		C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceVerificationView.swift; sourceTree = "<group>"; };
+		C5F865AEBE26F67E8EC78563 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
 		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NebCore; path = NebCore; sourceTree = SOURCE_ROOT; };
 		D4A9A42E9CEF2F2E33992366 /* Neb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Neb.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F5217C2605D6443D4E97BC0E /* ContactVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactVerificationView.swift; sourceTree = "<group>"; };
@@ -55,8 +61,10 @@
 		10B596E2202609381FCB415D /* Timeline */ = {
 			isa = PBXGroup;
 			children = (
+				B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */,
 				FA124BC3A057C6747E22FE0E /* MessageBubbleView.swift */,
 				6EB5117145C530E7DD757276 /* MessageComposerView.swift */,
+				458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */,
 				9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */,
 			);
 			path = Timeline;
@@ -79,12 +87,21 @@
 			);
 			sourceTree = "<group>";
 		};
+		21CB9A69E262635E0D1D8E53 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				C5F865AEBE26F67E8EC78563 /* AvatarView.swift */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
 		9750BE6ACEF19EA96DF3DC3B /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				82C30D683D99BE5A348941CF /* LoginView.swift */,
 				F8D7E64765408BD975A8E614 /* MainView.swift */,
 				1292A80D0DE976126E22F973 /* NewDMSheet.swift */,
+				21CB9A69E262635E0D1D8E53 /* Common */,
 				F0FDB02779FE6262882BBD78 /* Sidebar */,
 				10B596E2202609381FCB415D /* Timeline */,
 				DBD578E15D4F9075A629D0DA /* Verification */,
@@ -190,7 +207,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				383763D2559DE10C40EF481A /* AppState.swift in Sources */,
+				AC51D684A1C8FB2F36BE89E5 /* AvatarView.swift in Sources */,
 				49DF8E2527EB9AF7AD5F79DF /* ContactVerificationView.swift in Sources */,
+				2D739C11FE3DC015AB192453 /* DaySeparatorView.swift in Sources */,
 				DBB867147261FEA66794B285 /* DeviceVerificationView.swift in Sources */,
 				838E4CB92918FF5E08FFD52B /* LoginView.swift in Sources */,
 				938932BD820913837BC31EC9 /* MainView.swift in Sources */,
@@ -198,6 +217,7 @@
 				83B57EBDD68462EB939E6D99 /* MessageComposerView.swift in Sources */,
 				A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */,
 				85437DFE20DBD0CC5157DA45 /* NewDMSheet.swift in Sources */,
+				E3A35DBB96EC3C84FFAF2EBE /* ReadReceiptsView.swift in Sources */,
 				E3B1A9D501AAF165C9C88C9E /* RoomRowView.swift in Sources */,
 				AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */,
 				7B0EB0332324DE102076B0A2 /* TimelineView.swift in Sources */,
