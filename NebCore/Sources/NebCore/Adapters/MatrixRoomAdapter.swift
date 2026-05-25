@@ -113,6 +113,7 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
     private let myUserID: String
     private let continuation: AsyncStream<[NebMessage]>.Continuation
     nonisolated(unsafe) private var items: [TimelineItem] = []
+    nonisolated(unsafe) private var profileCache: [String: (name: String, avatarURL: String?)] = [:]
 
     init(roomID: String, myUserID: String, continuation: AsyncStream<[NebMessage]>.Continuation) {
         self.roomID = roomID
@@ -215,6 +216,8 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             break
         }
 
+        profileCache[event.sender] = (name: senderName, avatarURL: senderAvatarURL)
+
         let sendStatus: SendStatus
         if let localState = event.localSendState {
             switch localState {
@@ -232,7 +235,12 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         let readReceipts: [ReadReceipt] = event.readReceipts
             .filter { $0.key != myUserID }
             .map { (userID, _) in
-                ReadReceipt(userID: userID, displayName: userID)
+                let cached = profileCache[userID]
+                return ReadReceipt(
+                    userID: userID,
+                    displayName: cached?.name ?? userID,
+                    avatarURL: cached?.avatarURL
+                )
             }
 
         return NebMessage(
