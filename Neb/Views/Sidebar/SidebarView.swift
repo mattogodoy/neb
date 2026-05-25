@@ -32,8 +32,12 @@ struct SidebarView: View {
             )) {
                 Section(isExpanded: $dmSectionExpanded) {
                     ForEach(viewModel.directMessages) { room in
-                        RoomRowView(room: room, homeserverURL: homeserverURL)
-                            .tag(room.id)
+                        RoomRowView(
+                            room: room,
+                            homeserverURL: homeserverURL,
+                            typingUsers: viewModel.typingUsers(for: room.id)
+                        )
+                        .tag(room.id)
                     }
                 } header: {
                     Text("Direct Messages")
@@ -41,8 +45,12 @@ struct SidebarView: View {
 
                 Section(isExpanded: $groupSectionExpanded) {
                     ForEach(viewModel.groups) { room in
-                        RoomRowView(room: room, homeserverURL: homeserverURL)
-                            .tag(room.id)
+                        RoomRowView(
+                            room: room,
+                            homeserverURL: homeserverURL,
+                            typingUsers: viewModel.typingUsers(for: room.id)
+                        )
+                        .tag(room.id)
                     }
                 } header: {
                     Text("Groups")

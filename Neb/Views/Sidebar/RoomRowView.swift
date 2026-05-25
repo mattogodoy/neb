@@ -4,6 +4,7 @@ import NebCore
 struct RoomRowView: View {
     let room: NebRoom
     let homeserverURL: String
+    var typingUsers: [NebUser] = []
 
     var body: some View {
         HStack(spacing: 10) {
@@ -30,7 +31,13 @@ struct RoomRowView: View {
                     }
                 }
 
-                if let lastMessage = room.lastMessage {
+                if !typingUsers.isEmpty {
+                    Text(typingText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .italic()
+                        .lineLimit(1)
+                } else if let lastMessage = room.lastMessage {
                     Text(lastMessage)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
@@ -49,6 +56,20 @@ struct RoomRowView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    private var typingText: String {
+        switch typingUsers.count {
+        case 1:
+            let name = typingUsers[0].displayName ?? typingUsers[0].id
+            return "\(name) is typing..."
+        case 2:
+            let name1 = typingUsers[0].displayName ?? typingUsers[0].id
+            let name2 = typingUsers[1].displayName ?? typingUsers[1].id
+            return "\(name1) and \(name2) are typing..."
+        default:
+            return "Several people are typing..."
+        }
     }
 
     private func relativeTimestamp(_ date: Date) -> String {
