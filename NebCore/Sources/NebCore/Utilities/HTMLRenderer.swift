@@ -1,10 +1,10 @@
 import AppKit
 import SwiftUI
 
-enum HTMLRenderer {
+public enum HTMLRenderer {
     /// Converts an HTML string to an AttributedString styled for message bubbles.
     /// Returns nil if parsing fails or the input is nil.
-    static func render(_ html: String?, baseFont: NSFont = .systemFont(ofSize: 13), foregroundColor: NSColor = .labelColor) -> AttributedString? {
+    public static func render(_ html: String?, baseFont: NSFont = .systemFont(ofSize: 13), foregroundColor: NSColor = .labelColor) -> AttributedString? {
         guard let html, !html.isEmpty else { return nil }
 
         let styledHTML = """
