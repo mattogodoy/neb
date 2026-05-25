@@ -50,14 +50,11 @@ struct RichTextEditor: NSViewRepresentable {
 
         let scrollView = NSScrollView()
         scrollView.documentView = textView
-        scrollView.hasVerticalScroller = false
+        scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.drawsBackground = false
         scrollView.autohidesScrollers = true
-
-        // Constrain max height
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.heightAnchor.constraint(lessThanOrEqualToConstant: 150).isActive = true
+        scrollView.borderType = .noBorder
 
         context.coordinator.textView = textView
 
@@ -105,23 +102,28 @@ struct RichTextEditor: NSViewRepresentable {
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView else { return }
             let range = textView.selectedRange()
-            parent.selectedRange = range
 
-            // Get selection rect for toolbar positioning
-            if range.length > 0, let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
-                let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-                let rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-                let viewRect = textView.convert(rect, to: nil)
-                parent.selectionRect = viewRect
-            } else {
-                parent.selectionRect = .zero
-            }
+            // Defer binding updates to avoid modifying state during view update
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.parent.selectedRange = range
 
-            // Get attributes at selection
-            if range.length > 0, let storage = textView.textStorage, range.location < storage.length {
-                parent.selectionAttributes = storage.attributes(at: range.location, effectiveRange: nil)
-            } else {
-                parent.selectionAttributes = [:]
+                // Get selection rect for toolbar positioning
+                if range.length > 0, let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
+                    let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+                    let rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+                    let viewRect = textView.convert(rect, to: nil)
+                    self.parent.selectionRect = viewRect
+                } else {
+                    self.parent.selectionRect = .zero
+                }
+
+                // Get attributes at selection
+                if range.length > 0, let storage = textView.textStorage, range.location < storage.length {
+                    self.parent.selectionAttributes = storage.attributes(at: range.location, effectiveRange: nil)
+                } else {
+                    self.parent.selectionAttributes = [:]
+                }
             }
         }
 
