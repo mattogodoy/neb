@@ -45,6 +45,12 @@ public final class TimelineViewModel {
         isLoadingMore = false
     }
 
+    public func toggleReaction(eventID: String, emoji: String) async {
+        do {
+            try await roomService.toggleReaction(roomID: roomID, eventID: eventID, emoji: emoji)
+        } catch {}
+    }
+
     private func startObserving() {
         timelineTask = Task { [weak self] in
             guard let self else { return }

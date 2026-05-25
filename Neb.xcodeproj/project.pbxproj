@@ -10,6 +10,7 @@
 		2D739C11FE3DC015AB192453 /* DaySeparatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */; };
 		383763D2559DE10C40EF481A /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5647AAC9B5E1CB3A8D2F0A /* AppState.swift */; };
 		49DF8E2527EB9AF7AD5F79DF /* ContactVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5217C2605D6443D4E97BC0E /* ContactVerificationView.swift */; };
+		59697A975D71E671E8811F59 /* EmojiPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4694CCD8FCDB113FA519BAB /* EmojiPickerView.swift */; };
 		5FCCBE4E5CC742BAD819F61C /* NebCore in Frameworks */ = {isa = PBXBuildFile; productRef = D655DA2A5A3350417BA89546 /* NebCore */; };
 		7B0EB0332324DE102076B0A2 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */; };
 		838E4CB92918FF5E08FFD52B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82C30D683D99BE5A348941CF /* LoginView.swift */; };
@@ -20,16 +21,21 @@
 		A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCE3A05F93C5768B2871FAA /* NebApp.swift */; };
 		AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145BD912A2D89307D0EC7E9B /* SidebarView.swift */; };
 		AC51D684A1C8FB2F36BE89E5 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F865AEBE26F67E8EC78563 /* AvatarView.swift */; };
+		D330E098B0737A7D6433C45B /* EmojiData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4D5E9AC5A26021C1D0E531F /* EmojiData.swift */; };
+		D663AF41A6C69470AA8A7162 /* ReactionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455F0AB3BC0D230681A2204D /* ReactionBarView.swift */; };
 		DBB867147261FEA66794B285 /* DeviceVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */; };
 		E3A35DBB96EC3C84FFAF2EBE /* ReadReceiptsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */; };
 		E3B1A9D501AAF165C9C88C9E /* RoomRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1409F45F78A380DDDA49B9C /* RoomRowView.swift */; };
+		ECBBEF01342C0A00BC9B14D7 /* QuickReactBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE5BD6CC36497D248C28ADF /* QuickReactBar.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1292A80D0DE976126E22F973 /* NewDMSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDMSheet.swift; sourceTree = "<group>"; };
 		145BD912A2D89307D0EC7E9B /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		1EE5BD6CC36497D248C28ADF /* QuickReactBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickReactBar.swift; sourceTree = "<group>"; };
 		2B5647AAC9B5E1CB3A8D2F0A /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		3CAA00277FAEF93BECC66694 /* Neb.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Neb.entitlements; sourceTree = "<group>"; };
+		455F0AB3BC0D230681A2204D /* ReactionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionBarView.swift; sourceTree = "<group>"; };
 		458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptsView.swift; sourceTree = "<group>"; };
 		6EB5117145C530E7DD757276 /* MessageComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageComposerView.swift; sourceTree = "<group>"; };
 		82C30D683D99BE5A348941CF /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -37,6 +43,8 @@
 		ABCE3A05F93C5768B2871FAA /* NebApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NebApp.swift; sourceTree = "<group>"; };
 		B1409F45F78A380DDDA49B9C /* RoomRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomRowView.swift; sourceTree = "<group>"; };
 		B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySeparatorView.swift; sourceTree = "<group>"; };
+		B4694CCD8FCDB113FA519BAB /* EmojiPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiPickerView.swift; sourceTree = "<group>"; };
+		B4D5E9AC5A26021C1D0E531F /* EmojiData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiData.swift; sourceTree = "<group>"; };
 		C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceVerificationView.swift; sourceTree = "<group>"; };
 		C5F865AEBE26F67E8EC78563 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
 		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NebCore; path = NebCore; sourceTree = SOURCE_ROOT; };
@@ -64,6 +72,8 @@
 				B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */,
 				FA124BC3A057C6747E22FE0E /* MessageBubbleView.swift */,
 				6EB5117145C530E7DD757276 /* MessageComposerView.swift */,
+				1EE5BD6CC36497D248C28ADF /* QuickReactBar.swift */,
+				455F0AB3BC0D230681A2204D /* ReactionBarView.swift */,
 				458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */,
 				9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */,
 			);
@@ -91,6 +101,8 @@
 			isa = PBXGroup;
 			children = (
 				C5F865AEBE26F67E8EC78563 /* AvatarView.swift */,
+				B4D5E9AC5A26021C1D0E531F /* EmojiData.swift */,
+				B4694CCD8FCDB113FA519BAB /* EmojiPickerView.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -211,12 +223,16 @@
 				49DF8E2527EB9AF7AD5F79DF /* ContactVerificationView.swift in Sources */,
 				2D739C11FE3DC015AB192453 /* DaySeparatorView.swift in Sources */,
 				DBB867147261FEA66794B285 /* DeviceVerificationView.swift in Sources */,
+				D330E098B0737A7D6433C45B /* EmojiData.swift in Sources */,
+				59697A975D71E671E8811F59 /* EmojiPickerView.swift in Sources */,
 				838E4CB92918FF5E08FFD52B /* LoginView.swift in Sources */,
 				938932BD820913837BC31EC9 /* MainView.swift in Sources */,
 				998F5A21992C15BE79A12299 /* MessageBubbleView.swift in Sources */,
 				83B57EBDD68462EB939E6D99 /* MessageComposerView.swift in Sources */,
 				A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */,
 				85437DFE20DBD0CC5157DA45 /* NewDMSheet.swift in Sources */,
+				ECBBEF01342C0A00BC9B14D7 /* QuickReactBar.swift in Sources */,
+				D663AF41A6C69470AA8A7162 /* ReactionBarView.swift in Sources */,
 				E3A35DBB96EC3C84FFAF2EBE /* ReadReceiptsView.swift in Sources */,
 				E3B1A9D501AAF165C9C88C9E /* RoomRowView.swift in Sources */,
 				AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */,

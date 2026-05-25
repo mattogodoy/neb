@@ -10,6 +10,11 @@ struct MessageBubbleView: View {
     let groupPosition: MessageGroupPosition
     let isDM: Bool
     let homeserverURL: String
+    let onToggleReaction: (String) -> Void
+
+    @State private var isHovered = false
+    @State private var showQuickReact = false
+    @State private var showEmojiPicker = false
 
     private let avatarSize: CGFloat = 28
 
@@ -18,10 +23,56 @@ struct MessageBubbleView: View {
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 2) {
-            if message.isOutgoing {
-                outgoingBubble
-            } else {
-                incomingBubble
+            ZStack(alignment: .topTrailing) {
+                VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 4) {
+                    if message.isOutgoing {
+                        outgoingBubble
+                    } else {
+                        incomingBubble
+                    }
+
+                    if !message.reactions.isEmpty {
+                        ReactionBarView(
+                            reactions: message.reactions,
+                            onToggle: { emoji in react(emoji) },
+                            onAddReaction: { showEmojiPicker = true }
+                        )
+                    }
+                }
+
+                if isHovered && !showQuickReact && !showEmojiPicker {
+                    Button(action: { showQuickReact = true }) {
+                        Image(systemName: "face.smiling")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                            .padding(4)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: 4, y: -4)
+                }
+            }
+            .onHover { hovering in
+                isHovered = hovering
+            }
+            .popover(isPresented: $showQuickReact, arrowEdge: .top) {
+                QuickReactBar(
+                    onReact: { emoji in
+                        showQuickReact = false
+                        react(emoji)
+                    },
+                    onOpenPicker: {
+                        showQuickReact = false
+                        showEmojiPicker = true
+                    }
+                )
+            }
+            .popover(isPresented: $showEmojiPicker, arrowEdge: .top) {
+                EmojiPickerView { emoji in
+                    showEmojiPicker = false
+                    react(emoji)
+                }
             }
 
             if !message.readReceipts.isEmpty {
@@ -31,6 +82,16 @@ struct MessageBubbleView: View {
                 }
             }
         }
+        .contextMenu {
+            Button("React...") {
+                showEmojiPicker = true
+            }
+        }
+    }
+
+    private func react(_ emoji: String) {
+        RecentReactions.shared.recordReaction(emoji)
+        onToggleReaction(emoji)
     }
 
     // MARK: - Outgoing

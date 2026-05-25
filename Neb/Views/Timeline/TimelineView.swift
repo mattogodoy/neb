@@ -35,7 +35,10 @@ struct TimelineView: View {
                                 message: message,
                                 groupPosition: groupPosition(isFirst: first, isLast: last),
                                 isDM: isDM,
-                                homeserverURL: homeserverURL
+                                homeserverURL: homeserverURL,
+                                onToggleReaction: { emoji in
+                                    Task { await viewModel.toggleReaction(eventID: message.id, emoji: emoji) }
+                                }
                             )
                             .padding(.horizontal, 12)
                             .padding(.top, first ? 8 : 2)
