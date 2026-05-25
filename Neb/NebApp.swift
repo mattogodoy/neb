@@ -27,6 +27,7 @@ struct NebApp: App {
                                 roomServiceProvider: { appState.makeRoomService() },
                                 cryptoServiceProvider: { appState.makeCryptoService() },
                                 deviceVerificationStatus: appState.deviceVerificationStatus,
+                                homeserverURL: appState.homeserverURL,
                                 onLogout: {
                                     Task { await appState.loginViewModel.logout() }
                                 }

@@ -6,6 +6,7 @@ struct MainView: View {
     let roomServiceProvider: () -> any RoomServiceProtocol
     var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
+    var homeserverURL: String = ""
     var onLogout: (() -> Void)?
     @State private var showNewDM = false
     @State private var showDeviceVerification = false
@@ -26,7 +27,9 @@ struct MainView: View {
                     viewModel: vm,
                     roomName: room.name,
                     directUserID: room.directUserID,
-                    cryptoServiceProvider: cryptoServiceProvider
+                    cryptoServiceProvider: cryptoServiceProvider,
+                    isDM: room.isDirect,
+                    homeserverURL: homeserverURL
                 )
             } else {
                 ContentUnavailableView(

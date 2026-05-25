@@ -52,6 +52,8 @@ final class AppState {
         deviceVerificationStatus = .unknown
     }
 
+    var homeserverURL: String { "https://matrix.matto.io" }
+
     func makeRoomService() -> any RoomServiceProtocol { roomAdapter }
     func makeCryptoService() -> any CryptoServiceProtocol { cryptoAdapter }
 }
