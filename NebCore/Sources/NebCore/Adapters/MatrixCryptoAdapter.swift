@@ -38,12 +38,15 @@ public final class MatrixCryptoAdapter: CryptoServiceProtocol, @unchecked Sendab
 
     public func startDeviceVerification() async throws {
         guard let controller else {
+            logger.info("startDeviceVerification: no controller, setting up listener")
             try await setupVerificationListener()
             guard let controller = self.controller else { throw NebError.notLoggedIn }
+            logger.info("startDeviceVerification: requesting verification")
             try await controller.requestDeviceVerification()
             continuation?.yield(.waitingForAcceptance)
             return
         }
+        logger.info("startDeviceVerification: requesting verification")
         try await controller.requestDeviceVerification()
         continuation?.yield(.waitingForAcceptance)
     }

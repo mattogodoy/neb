@@ -80,6 +80,14 @@ struct DeviceVerificationView: View {
                     .frame(maxWidth: 340)
             }
 
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.caption)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 340)
+            }
+
             VStack(spacing: 10) {
                 verificationMethodButton(
                     icon: "laptopcomputer.and.iphone",
