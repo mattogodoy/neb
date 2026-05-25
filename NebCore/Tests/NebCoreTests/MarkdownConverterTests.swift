@@ -102,3 +102,55 @@ private func styled(_ text: String, traits: NSFontDescriptor.SymbolicTraits = []
     let result = MarkdownConverter.convert(input)
     #expect(result == "1. first\n2. second")
 }
+
+@Test func convertsEmptyString() {
+    let input = NSAttributedString(string: "")
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "")
+}
+
+@Test func preservesNewlines() {
+    let input = NSAttributedString(string: "line one\nline two")
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "line one\nline two")
+}
+
+@Test func convertsMultipleInlineStyles() {
+    let result = NSMutableAttributedString()
+    result.append(styled("bold", traits: .bold))
+    result.append(NSAttributedString(string: " and "))
+    result.append(styled("italic", traits: .italic))
+    let markdown = MarkdownConverter.convert(result)
+    #expect(markdown == "**bold** and *italic*")
+}
+
+@Test func underlineAndBoldCombined() {
+    let font = NSFont.boldSystemFont(ofSize: 13)
+    let input = NSAttributedString(string: "both", attributes: [
+        .font: font,
+        .underlineStyle: NSUnderlineStyle.single.rawValue
+    ])
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "**__both__**")
+}
+
+@Test func codeBlockPreservesMultipleLines() {
+    let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+    let input = NSAttributedString(string: "func hello() {\n    print(\"hi\")\n}", attributes: [
+        .font: monoFont,
+        .init("NebBlockType"): "codeBlock"
+    ])
+    let result = MarkdownConverter.convert(input)
+    #expect(result.hasPrefix("```\n"))
+    #expect(result.hasSuffix("\n```"))
+    #expect(result.contains("func hello()"))
+}
+
+@Test func quoteWithMultipleLines() {
+    let input = NSAttributedString(string: "line one\nline two", attributes: [
+        .font: NSFont.systemFont(ofSize: 13),
+        .init("NebBlockType"): "quote"
+    ])
+    let result = MarkdownConverter.convert(input)
+    #expect(result == "> line one\n> line two")
+}
