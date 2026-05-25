@@ -61,6 +61,17 @@ struct MessageComposerView: View {
                     }
                 )
                 .frame(minHeight: 24)
+                .popover(isPresented: Binding(
+                    get: { selectedRange.length > 0 },
+                    set: { if !$0 { selectedRange = NSRange(location: 0, length: 0) } }
+                ), arrowEdge: .top) {
+                    FormattingToolbarView(
+                        selectionAttributes: selectionAttributes,
+                        onFormat: { action in
+                            editorState.applyFormatting?(action)
+                        }
+                    )
+                }
 
                 Button(action: {
                     if viewModel.editingMessage != nil {
