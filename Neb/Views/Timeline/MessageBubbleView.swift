@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import NebCore
 
 enum MessageGroupPosition {
@@ -22,6 +23,23 @@ struct MessageBubbleView: View {
     private var isFirst: Bool { groupPosition == .first || groupPosition == .alone }
     private var isLast: Bool { groupPosition == .last || groupPosition == .alone }
     private var isEmojiOnly: Bool { message.body.isEmojiOnly }
+
+    private var renderedBody: Text {
+        if let attributed = HTMLRenderer.render(message.formattedBody) {
+            return Text(attributed)
+        }
+        return Text(message.body)
+    }
+
+    private var renderedBodyOutgoing: Text {
+        if let attributed = HTMLRenderer.render(
+            message.formattedBody,
+            foregroundColor: NSColor.white
+        ) {
+            return Text(attributed)
+        }
+        return Text(message.body)
+    }
 
     var body: some View {
         VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 0) {
@@ -106,7 +124,7 @@ struct MessageBubbleView: View {
             }
         } else {
             HStack(alignment: .lastTextBaseline, spacing: 4) {
-                Text(message.body)
+                renderedBodyOutgoing
                     .font(.system(size: 13))
 
                 HStack(spacing: 2) {
@@ -182,7 +200,7 @@ struct MessageBubbleView: View {
                         }
                     } else {
                         HStack(alignment: .lastTextBaseline, spacing: 4) {
-                            Text(message.body)
+                            renderedBody
                                 .font(.system(size: 13))
 
                             HStack(spacing: 2) {
