@@ -1,9 +1,9 @@
 import SwiftUI
+import AppKit
 import NebCore
 
 struct MessageComposerView: View {
     @Bindable var viewModel: TimelineViewModel
-    @FocusState private var isFocused: Bool
     @State private var emojiQuery: String?
     @State private var emojiResults: [EmojiItem] = []
     @State private var selectedIndex: Int = 0
@@ -35,61 +35,30 @@ struct MessageComposerView: View {
                 .padding(.bottom, 2)
             }
 
-            HStack(spacing: 8) {
-                TextField(viewModel.editingMessage != nil ? "Edit message..." : "Type a message...", text: $viewModel.composerText)
-                    .textFieldStyle(.plain)
-                    .focused($isFocused)
-                    .onSubmit {
-                        if emojiQuery != nil && !emojiResults.isEmpty {
-                            insertEmoji(emojiResults[selectedIndex])
-                        } else if viewModel.editingMessage != nil {
+            HStack(alignment: .bottom, spacing: 8) {
+                RichTextEditor(
+                    plainText: $viewModel.composerText,
+                    onSubmit: { attributed in
+                        if viewModel.editingMessage != nil {
                             Task { await viewModel.submitEdit() }
                         } else {
-                            send()
+                            send(attributed: attributed)
                         }
-                    }
-                    .onChange(of: viewModel.composerText) { _, newValue in
-                        updateEmojiSearch(newValue)
+                    },
+                    onTextChanged: { text in
+                        updateEmojiSearch(text)
                         if viewModel.editingMessage == nil {
-                            viewModel.onComposerChanged(text: newValue)
+                            viewModel.onComposerChanged(text: text)
                         }
                     }
-                    .onKeyPress(.upArrow) {
-                        if emojiQuery != nil && !emojiResults.isEmpty {
-                            selectedIndex = max(0, selectedIndex - 1)
-                            return .handled
-                        }
-                        if viewModel.composerText.isEmpty && viewModel.editingMessage == nil {
-                            viewModel.startEditingLastMessage()
-                            return .handled
-                        }
-                        return .ignored
-                    }
-                    .onKeyPress(.downArrow) {
-                        if emojiQuery != nil && !emojiResults.isEmpty {
-                            selectedIndex = min(emojiResults.count - 1, selectedIndex + 1)
-                            return .handled
-                        }
-                        return .ignored
-                    }
-                    .onKeyPress(.escape) {
-                        if emojiQuery != nil {
-                            emojiQuery = nil
-                            emojiResults = []
-                            return .handled
-                        }
-                        if viewModel.editingMessage != nil {
-                            viewModel.cancelEditing()
-                            return .handled
-                        }
-                        return .ignored
-                    }
+                )
+                .frame(minHeight: 24)
 
                 Button(action: {
                     if viewModel.editingMessage != nil {
                         Task { await viewModel.submitEdit() }
                     } else {
-                        send()
+                        sendPlain()
                     }
                 }) {
                     Image(systemName: viewModel.editingMessage != nil ? "checkmark.circle.fill" : "arrow.up.circle.fill")
@@ -101,7 +70,6 @@ struct MessageComposerView: View {
             }
             .padding(12)
         }
-        .onAppear { isFocused = true }
     }
 
     // MARK: - Emoji Suggestions
@@ -178,7 +146,17 @@ struct MessageComposerView: View {
         emojiResults = []
     }
 
-    private func send() {
+    private func send(attributed: NSAttributedString) {
+        let markdown = MarkdownConverter.convert(attributed)
+        viewModel.composerText = ""
+        emojiQuery = nil
+        emojiResults = []
+        Task {
+            await viewModel.sendMessage(markdown)
+        }
+    }
+
+    private func sendPlain() {
         let text = viewModel.composerText
         viewModel.composerText = ""
         emojiQuery = nil
