@@ -6,8 +6,21 @@ import NebCore
 // UIViewRepresentable/UITextView. Same public interface, same bindings.
 // Use #if os(macOS) / #else to branch when adding the iOS target.
 
+enum FormattingAction {
+    case bold, italic, underline, strikethrough, inlineCode
+    case codeBlock, bulletList, numberedList, quote
+}
+
+class RichTextEditorState: ObservableObject {
+    var applyFormatting: ((FormattingAction) -> Void)?
+}
+
 struct RichTextEditor: NSViewRepresentable {
     @Binding var plainText: String
+    @Binding var selectedRange: NSRange
+    @Binding var selectionRect: CGRect
+    @Binding var selectionAttributes: [NSAttributedString.Key: Any]
+    var editorState: RichTextEditorState?
     var onSubmit: (NSAttributedString) -> Void
     var onTextChanged: (String) -> Void
 
@@ -48,6 +61,12 @@ struct RichTextEditor: NSViewRepresentable {
 
         context.coordinator.textView = textView
 
+        // Wire formatting callback
+        let coordinator = context.coordinator
+        editorState?.applyFormatting = { action in
+            coordinator.applyFormatting(action)
+        }
+
         // Focus on appear
         DispatchQueue.main.async {
             textView.window?.makeFirstResponder(textView)
@@ -81,6 +100,70 @@ struct RichTextEditor: NSViewRepresentable {
             let text = textView.string
             parent.plainText = text
             parent.onTextChanged(text)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView else { return }
+            let range = textView.selectedRange()
+            parent.selectedRange = range
+
+            // Get selection rect for toolbar positioning
+            if range.length > 0, let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
+                let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+                let rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+                let viewRect = textView.convert(rect, to: nil)
+                parent.selectionRect = viewRect
+            } else {
+                parent.selectionRect = .zero
+            }
+
+            // Get attributes at selection
+            if range.length > 0, let storage = textView.textStorage, range.location < storage.length {
+                parent.selectionAttributes = storage.attributes(at: range.location, effectiveRange: nil)
+            } else {
+                parent.selectionAttributes = [:]
+            }
+        }
+
+        func applyFormatting(_ action: FormattingAction) {
+            guard let textView else { return }
+            let storage = textView.textStorage!
+            let range = textView.selectedRange()
+
+            guard range.length > 0 || isBlockAction(action) else { return }
+
+            storage.beginEditing()
+
+            switch action {
+            case .bold:
+                AttributedStringFormatter.toggleTrait(.bold, in: storage, range: range)
+            case .italic:
+                AttributedStringFormatter.toggleTrait(.italic, in: storage, range: range)
+            case .underline:
+                AttributedStringFormatter.toggleAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, in: storage, range: range)
+            case .strikethrough:
+                AttributedStringFormatter.toggleAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, in: storage, range: range)
+            case .inlineCode:
+                AttributedStringFormatter.applyInlineCode(in: storage, range: range)
+            case .codeBlock:
+                AttributedStringFormatter.applyBlockType("codeBlock", in: storage, range: range)
+            case .bulletList:
+                AttributedStringFormatter.applyBlockType("bulletList", in: storage, range: range)
+            case .numberedList:
+                AttributedStringFormatter.applyBlockType("numberedList", in: storage, range: range)
+            case .quote:
+                AttributedStringFormatter.applyBlockType("quote", in: storage, range: range)
+            }
+
+            storage.endEditing()
+            textView.didChangeText()
+        }
+
+        private func isBlockAction(_ action: FormattingAction) -> Bool {
+            switch action {
+            case .codeBlock, .bulletList, .numberedList, .quote: return true
+            default: return false
+            }
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {

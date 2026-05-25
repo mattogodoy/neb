@@ -7,6 +7,10 @@ struct MessageComposerView: View {
     @State private var emojiQuery: String?
     @State private var emojiResults: [EmojiItem] = []
     @State private var selectedIndex: Int = 0
+    @State private var selectedRange: NSRange = NSRange(location: 0, length: 0)
+    @State private var selectionRect: CGRect = .zero
+    @State private var selectionAttributes: [NSAttributedString.Key: Any] = [:]
+    @State private var editorState = RichTextEditorState()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,6 +42,10 @@ struct MessageComposerView: View {
             HStack(alignment: .bottom, spacing: 8) {
                 RichTextEditor(
                     plainText: $viewModel.composerText,
+                    selectedRange: $selectedRange,
+                    selectionRect: $selectionRect,
+                    selectionAttributes: $selectionAttributes,
+                    editorState: editorState,
                     onSubmit: { attributed in
                         if viewModel.editingMessage != nil {
                             Task { await viewModel.submitEdit() }
