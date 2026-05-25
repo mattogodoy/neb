@@ -20,6 +20,7 @@ struct MessageBubbleView: View {
 
     private var isFirst: Bool { groupPosition == .first || groupPosition == .alone }
     private var isLast: Bool { groupPosition == .last || groupPosition == .alone }
+    private var isEmojiOnly: Bool { message.body.isEmojiOnly }
 
     var body: some View {
         VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 0) {
@@ -65,36 +66,56 @@ struct MessageBubbleView: View {
         HStack {
             Spacer(minLength: 60)
             bubbleWithHover(smileyOnLeft: true) {
-                outgoingBubbleContent
-                    .background(Color.accentColor.opacity(0.8))
-                    .foregroundStyle(.white)
-                    .clipShape(BubbleShape(
-                        topLeft: 12,
-                        topRight: isFirst ? 12 : 2,
-                        bottomLeft: 12,
-                        bottomRight: isLast ? 12 : 2
-                    ))
+                if isEmojiOnly {
+                    outgoingBubbleContent
+                } else {
+                    outgoingBubbleContent
+                        .background(Color.accentColor.opacity(0.8))
+                        .foregroundStyle(.white)
+                        .clipShape(BubbleShape(
+                            topLeft: 12,
+                            topRight: isFirst ? 12 : 2,
+                            bottomLeft: 12,
+                            bottomRight: isLast ? 12 : 2
+                        ))
+                }
             }
         }
     }
 
+    @ViewBuilder
     private var outgoingBubbleContent: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 4) {
-            Text(message.body)
-                .font(.system(size: 13))
-
-            HStack(spacing: 2) {
-                Text(message.timestamp, style: .time)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.white.opacity(0.6))
-
-                if message.readReceipts.isEmpty {
-                    sendStatusIcon
+        if isEmojiOnly {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(message.body)
+                    .font(.system(size: 52))
+                HStack(spacing: 2) {
+                    Text(message.timestamp, style: .time)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    if message.readReceipts.isEmpty {
+                        sendStatusIcon
+                    }
                 }
             }
+        } else {
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                Text(message.body)
+                    .font(.system(size: 13))
+
+                HStack(spacing: 2) {
+                    Text(message.timestamp, style: .time)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.white.opacity(0.6))
+
+                    if message.readReceipts.isEmpty {
+                        sendStatusIcon
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
     }
 
     @ViewBuilder
@@ -140,24 +161,34 @@ struct MessageBubbleView: View {
                 }
 
                 bubbleWithHover(smileyOnLeft: false) {
-                    HStack(alignment: .lastTextBaseline, spacing: 4) {
-                        Text(message.body)
-                            .font(.system(size: 13))
+                    if isEmojiOnly {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(message.body)
+                                .font(.system(size: 52))
+                            Text(message.timestamp, style: .time)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        HStack(alignment: .lastTextBaseline, spacing: 4) {
+                            Text(message.body)
+                                .font(.system(size: 13))
 
-                        Text(message.timestamp, style: .time)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+                            Text(message.timestamp, style: .time)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(.controlBackgroundColor))
+                        .foregroundStyle(.primary)
+                        .clipShape(BubbleShape(
+                            topLeft: isFirst ? 12 : 2,
+                            topRight: 12,
+                            bottomLeft: isLast ? 12 : 2,
+                            bottomRight: 12
+                        ))
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(.controlBackgroundColor))
-                    .foregroundStyle(.primary)
-                    .clipShape(BubbleShape(
-                        topLeft: isFirst ? 12 : 2,
-                        topRight: 12,
-                        bottomLeft: isLast ? 12 : 2,
-                        bottomRight: 12
-                    ))
                 }
             }
 
@@ -238,5 +269,15 @@ private struct BubbleShape: Shape {
         path.addArc(tangent1End: CGPoint(x: rect.minX, y: rect.minY), tangent2End: CGPoint(x: rect.minX + topLeft, y: rect.minY), radius: topLeft)
         path.closeSubpath()
         return path
+    }
+}
+
+extension String {
+    var isEmojiOnly: Bool {
+        guard !isEmpty else { return false }
+        let scalars = unicodeScalars
+        let emojiCount = scalars.filter { $0.properties.isEmoji && $0.value > 0x23 }.count
+        let nonEmojiCount = scalars.filter { !$0.properties.isEmoji && !$0.properties.isEmojiPresentation && !$0.properties.isJoinControl && $0 != "\u{FE0F}" && $0 != "\u{200D}" }.count
+        return emojiCount > 0 && emojiCount <= 3 && nonEmojiCount == 0
     }
 }
