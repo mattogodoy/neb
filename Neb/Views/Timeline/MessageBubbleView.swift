@@ -32,8 +32,7 @@ struct MessageBubbleView: View {
             if !message.reactions.isEmpty {
                 ReactionBarView(
                     reactions: message.reactions,
-                    onToggle: { emoji in react(emoji) },
-                    onAddReaction: { showEmojiPicker = true }
+                    onToggle: { emoji in react(emoji) }
                 )
                 .font(.system(size: 12))
                 .offset(y: -4)
@@ -64,7 +63,7 @@ struct MessageBubbleView: View {
     private var outgoingBubble: some View {
         HStack {
             Spacer(minLength: 60)
-            bubbleWithHover {
+            bubbleWithHover(smileyOnLeft: true) {
                 outgoingBubbleContent
                     .background(Color.accentColor.opacity(0.8))
                     .foregroundStyle(.white)
@@ -139,7 +138,7 @@ struct MessageBubbleView: View {
                         .foregroundStyle(UserColorGenerator.color(for: message.senderID))
                 }
 
-                bubbleWithHover {
+                bubbleWithHover(smileyOnLeft: false) {
                     HStack(alignment: .lastTextBaseline, spacing: 4) {
                         Text(message.body)
                             .font(.system(size: 13))
@@ -167,13 +166,20 @@ struct MessageBubbleView: View {
 
     // MARK: - Hover + Popovers (anchored to bubble)
 
-    private func bubbleWithHover<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        ZStack(alignment: .topTrailing) {
+    private func bubbleWithHover<Content: View>(smileyOnLeft: Bool, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 4) {
+            if smileyOnLeft && isHovered && !showQuickReact && !showEmojiPicker {
+                smileyButton
+            } else if smileyOnLeft {
+                Color.clear.frame(width: 22, height: 22)
+            }
+
             content()
 
-            if isHovered && !showQuickReact && !showEmojiPicker {
+            if !smileyOnLeft && isHovered && !showQuickReact && !showEmojiPicker {
                 smileyButton
-                    .offset(x: 4, y: -4)
+            } else if !smileyOnLeft {
+                Color.clear.frame(width: 22, height: 22)
             }
         }
         .onHover { isHovered = $0 }
@@ -199,12 +205,9 @@ struct MessageBubbleView: View {
 
     private var smileyButton: some View {
         Button(action: { showQuickReact = true }) {
-            Image(systemName: "face.smiling")
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .padding(4)
-                .background(.ultraThinMaterial)
-                .clipShape(Circle())
+            Image(systemName: "smiley")
+                .font(.system(size: 16))
+                .foregroundStyle(.tertiary)
         }
         .buttonStyle(.plain)
     }

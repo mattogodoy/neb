@@ -4,7 +4,6 @@ import NebCore
 struct ReactionBarView: View {
     let reactions: [NebReaction]
     let onToggle: (String) -> Void
-    let onAddReaction: () -> Void
 
     var body: some View {
         FlowLayout(spacing: 4) {
@@ -33,16 +32,6 @@ struct ReactionBarView: View {
                 .buttonStyle(.plain)
             }
 
-            Button(action: onAddReaction) {
-                Image(systemName: "plus")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color(.controlBackgroundColor))
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
         }
     }
 }
