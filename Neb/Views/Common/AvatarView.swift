@@ -1,33 +1,42 @@
 import SwiftUI
+import NebCore
 
-/// Placeholder — full implementation provided by Task 4.
 struct AvatarView: View {
     let size: CGFloat
     let name: String
     let userID: String
-    let avatarURL: String?
-    let homeserverURL: String
+    var avatarURL: String?
+    var homeserverURL: String = ""
+
+    @State private var loadedImage: NSImage?
 
     var body: some View {
-        Circle()
-            .fill(Color.gray.opacity(0.3))
-            .frame(width: size, height: size)
-            .overlay(
-                Text(initials)
-                    .font(.system(size: size * 0.4, weight: .medium))
-                    .foregroundStyle(.secondary)
-            )
-    }
+        ZStack {
+            Circle()
+                .fill(UserColorGenerator.color(for: userID))
+                .frame(width: size, height: size)
 
-    private var initials: String {
-        let words = name.split(separator: " ")
-        if words.count >= 2,
-           let first = words.first?.first,
-           let second = words[1].first {
-            return "\(first)\(second)".uppercased()
-        } else if let first = name.first {
-            return String(first).uppercased()
+            Text(String(name.prefix(1)).uppercased())
+                .font(.system(size: size * 0.45, weight: .medium))
+                .foregroundStyle(.white)
+
+            if let image = loadedImage {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+                    .transition(.opacity)
+            }
         }
-        return "?"
+        .frame(width: size, height: size)
+        .task(id: avatarURL) {
+            guard let url = avatarURL, !url.isEmpty, !homeserverURL.isEmpty else { return }
+            if let image = await AvatarImageCache.shared.image(for: url, homeserverURL: homeserverURL) {
+                withAnimation(.easeIn(duration: 0.15)) {
+                    loadedImage = image
+                }
+            }
+        }
     }
 }
