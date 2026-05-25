@@ -5,8 +5,10 @@ struct ContactVerificationView: View {
     @Bindable var viewModel: VerificationViewModel
     let userID: String
     let displayName: String
+    var cryptoService: (any CryptoServiceProtocol)?
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirming = false
+    @State private var isAlreadyVerified = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -33,6 +35,9 @@ struct ContactVerificationView: View {
         }
         .padding(32)
         .frame(minWidth: 440, minHeight: 300)
+        .task {
+            isAlreadyVerified = await cryptoService?.isUserVerified(userID: userID) ?? false
+        }
     }
 
     private func close() {
@@ -42,29 +47,59 @@ struct ContactVerificationView: View {
 
     private var idleView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "person.badge.shield.checkmark")
-                .font(.system(size: 48))
-                .foregroundStyle(.orange)
-            Text("Verify \(displayName)")
-                .font(.title3)
-                .fontWeight(.semibold)
-            Text("Verifying confirms that you're really talking to \(displayName) and not an impersonator. You'll compare emoji on both sides.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 340)
-            Text(userID)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .monospaced()
+            if isAlreadyVerified {
+                Image(systemName: "person.badge.shield.checkmark.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.green)
+                Text("\(displayName) is verified")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Text("You've confirmed this user's identity. Your conversations are secure.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 340)
+                Text(userID)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .monospaced()
 
-            Button("Start Verification") {
-                Task { await viewModel.startUserVerification(userID: userID) }
+                Button("Done") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.cancelAction)
+            } else {
+                Image(systemName: "person.badge.shield.checkmark")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.orange)
+                Text("Verify \(displayName)")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Text("Verifying confirms that you're really talking to \(displayName) and not an impersonator. You'll compare emoji on both sides.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 340)
+                Text(userID)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .monospaced()
+
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 340)
+                }
+
+                Button("Start Verification") {
+                    Task { await viewModel.startUserVerification(userID: userID) }
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
             }
-            .buttonStyle(.borderedProminent)
-
-            Button("Cancel") { dismiss() }
-                .keyboardShortcut(.cancelAction)
         }
     }
 

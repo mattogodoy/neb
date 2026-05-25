@@ -58,7 +58,8 @@ struct TimelineView: View {
                 ContactVerificationView(
                     viewModel: VerificationViewModel(cryptoService: provider()),
                     userID: userID,
-                    displayName: roomName
+                    displayName: roomName,
+                    cryptoService: provider()
                 )
             }
         }

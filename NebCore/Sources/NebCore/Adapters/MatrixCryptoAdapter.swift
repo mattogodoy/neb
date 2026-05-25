@@ -49,7 +49,16 @@ public final class MatrixCryptoAdapter: CryptoServiceProtocol, @unchecked Sendab
     }
 
     public func startUserVerification(userID: String) async throws {
-        guard let controller else { throw NebError.notLoggedIn }
+        guard let controller else {
+            logger.error("startUserVerification: no controller, setting up listener first")
+            try await setupVerificationListener()
+            guard let controller = self.controller else { throw NebError.notLoggedIn }
+            logger.info("startUserVerification: requesting verification for \(userID)")
+            try await controller.requestUserVerification(userId: userID)
+            continuation?.yield(.waitingForAcceptance)
+            return
+        }
+        logger.info("startUserVerification: requesting verification for \(userID)")
         try await controller.requestUserVerification(userId: userID)
         continuation?.yield(.waitingForAcceptance)
     }
