@@ -58,20 +58,23 @@ struct TimelineView: View {
                                 .transition(.opacity)
                                 .id("typing-indicator")
                         }
-                        Color.clear.frame(height: 1)
-                            .id("scroll-bottom")
+                        GeometryReader { geo in
+                            Color.clear.onChange(of: geo.frame(in: .named("timeline"))) { _, frame in
+                                let visible = frame.minY < geo.frame(in: .global).maxY + 50
+                                if visible != isAtBottom {
+                                    withAnimation(.easeOut(duration: 0.15)) {
+                                        isAtBottom = visible
+                                    }
+                                }
+                            }
+                        }
+                        .frame(height: 1)
+                        .id("scroll-bottom")
                     }
                     .padding(.vertical, 8)
                 }
+                .coordinateSpace(name: "timeline")
                 .defaultScrollAnchor(.bottom)
-                .onScrollGeometryChange(for: Bool.self) { geo in
-                    let atBottom = geo.contentOffset.y + geo.containerSize.height >= geo.contentSize.height - 50
-                    return atBottom
-                } action: { _, newValue in
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        isAtBottom = newValue
-                    }
-                }
                 .onChange(of: viewModel.messages.last?.id) { _, newID in
                     if let id = newID, isAtBottom {
                         withAnimation(.easeOut(duration: 0.2)) {
