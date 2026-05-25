@@ -27,6 +27,7 @@ struct MessageComposerView: View {
                     }
                     .onChange(of: viewModel.composerText) { _, newValue in
                         updateEmojiSearch(newValue)
+                        viewModel.onComposerChanged(text: newValue)
                     }
                     .onKeyPress(.upArrow) {
                         if emojiQuery != nil && !emojiResults.isEmpty {
