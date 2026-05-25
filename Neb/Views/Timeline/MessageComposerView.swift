@@ -17,7 +17,7 @@ struct MessageComposerView: View {
             Button(action: send) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
             .disabled(viewModel.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

@@ -1,5 +1,8 @@
 import Foundation
 import MatrixRustSDK
+import os
+
+private let logger = Logger(subsystem: "com.neb.app", category: "Auth")
 
 public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
     private var client: Client?
@@ -21,8 +24,15 @@ public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
     public func login(homeserverURL: String, username: String, password: String) async throws {
         setState(.loggingIn)
 
-        let dataPath = sessionDirectory.appendingPathComponent("data").path
-        let cachePath = sessionDirectory.appendingPathComponent("cache").path
+        let dataDir = sessionDirectory.appendingPathComponent("data")
+        let cacheDir = sessionDirectory.appendingPathComponent("cache")
+        try? FileManager.default.removeItem(at: dataDir)
+        try? FileManager.default.removeItem(at: cacheDir)
+        try? FileManager.default.removeItem(at: sessionDirectory.appendingPathComponent("session.json"))
+        logger.info("Cleared old session data, logging in to \(homeserverURL) as \(username)")
+
+        let dataPath = dataDir.path
+        let cachePath = cacheDir.path
 
         let client = try await ClientBuilder()
             .serverNameOrHomeserverUrl(serverNameOrUrl: homeserverURL)
@@ -41,7 +51,9 @@ public final class MatrixAuthAdapter: AuthServiceProtocol, @unchecked Sendable {
 
         self.client = client
         try persistSession(from: client)
-        setState(.loggedIn(userID: try client.userId()))
+        let userID = try client.userId()
+        logger.info("Login successful: \(userID)")
+        setState(.loggedIn(userID: userID))
     }
 
     public func restoreSession() async throws -> Bool {

@@ -39,7 +39,7 @@ struct DeviceVerificationView: View {
             }
         }
         .padding(32)
-        .frame(width: 400, minHeight: 300)
+        .frame(minWidth: 400, minHeight: 300)
     }
 
     private var idleView: some View {

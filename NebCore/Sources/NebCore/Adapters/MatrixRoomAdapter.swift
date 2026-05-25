@@ -9,8 +9,25 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
     }
 
     public func timelineStream(roomID: String) -> AsyncStream<[NebMessage]> {
-        AsyncStream { continuation in
-            // Timeline observation will be wired during integration
+        AsyncStream { [weak self] continuation in
+            guard let self else { return }
+
+            Task {
+                guard let client = self.clientProvider() else { return }
+                guard let room = try? client.getRoom(roomId: roomID) else { return }
+
+                let timeline = try await room.timeline()
+                let myUserID = (try? client.userId()) ?? ""
+
+                let listener = NebTimelineListener(
+                    roomID: roomID,
+                    myUserID: myUserID,
+                    continuation: continuation
+                )
+                let _ = await timeline.addListener(listener: listener)
+
+                let _ = try? await timeline.paginateBackwards(numEvents: 50)
+            }
         }
     }
 
@@ -55,5 +72,86 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
         guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
         let timeline = try await room.timeline()
         let _ = try await timeline.paginateBackwards(numEvents: UInt16(min(count, UInt(UInt16.max))))
+    }
+}
+
+private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
+    private let roomID: String
+    private let myUserID: String
+    private let continuation: AsyncStream<[NebMessage]>.Continuation
+    nonisolated(unsafe) private var items: [TimelineItem] = []
+
+    init(roomID: String, myUserID: String, continuation: AsyncStream<[NebMessage]>.Continuation) {
+        self.roomID = roomID
+        self.myUserID = myUserID
+        self.continuation = continuation
+    }
+
+    func onUpdate(diff: [TimelineDiff]) {
+        for d in diff {
+            switch d {
+            case .append(let values):
+                items.append(contentsOf: values)
+            case .clear:
+                items.removeAll()
+            case .pushFront(let value):
+                items.insert(value, at: 0)
+            case .pushBack(let value):
+                items.append(value)
+            case .popFront:
+                if !items.isEmpty { items.removeFirst() }
+            case .popBack:
+                if !items.isEmpty { items.removeLast() }
+            case .insert(let index, let value):
+                let i = Int(index)
+                if i <= items.count { items.insert(value, at: i) }
+            case .set(let index, let value):
+                let i = Int(index)
+                if i < items.count { items[i] = value }
+            case .remove(let index):
+                let i = Int(index)
+                if i < items.count { items.remove(at: i) }
+            case .truncate(let length):
+                let len = Int(length)
+                if len < items.count { items = Array(items.prefix(len)) }
+            case .reset(let values):
+                items = values
+            }
+        }
+
+        let messages = items.compactMap { convertItem($0) }
+        continuation.yield(messages)
+    }
+
+    private func convertItem(_ item: TimelineItem) -> NebMessage? {
+        guard let event = item.asEvent() else { return nil }
+        guard case .msgLike(let msgLike) = event.content else { return nil }
+        guard case .message(let msgContent) = msgLike.kind else { return nil }
+
+        let eventID: String
+        switch event.eventOrTransactionId {
+        case .eventId(let id):
+            eventID = id
+        case .transactionId(let id):
+            eventID = id
+        }
+
+        var senderName = event.sender
+        switch event.senderProfile {
+        case .ready(let displayName, _, _):
+            if let name = displayName { senderName = name }
+        default:
+            break
+        }
+
+        return NebMessage(
+            id: eventID,
+            roomID: roomID,
+            senderID: event.sender,
+            senderDisplayName: senderName,
+            body: msgContent.body,
+            timestamp: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000),
+            isOutgoing: event.isOwn
+        )
     }
 }
