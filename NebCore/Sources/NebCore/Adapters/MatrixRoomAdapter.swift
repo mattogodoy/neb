@@ -220,10 +220,16 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
 
         let body: String
         var isEdited = false
+        var formattedBody: String? = nil
         switch msgLike.kind {
         case .message(let msgContent):
             body = msgContent.body
             isEdited = msgContent.isEdited
+            if case .text(let textContent) = msgContent.msgType,
+               let formatted = textContent.formatted,
+               case .html = formatted.format {
+                formattedBody = formatted.body
+            }
         case .unableToDecrypt:
             body = "\u{1F512} Encrypted message (verify this device to decrypt)"
         default:
@@ -291,6 +297,7 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             senderDisplayName: senderName,
             senderAvatarURL: senderAvatarURL,
             body: body,
+            formattedBody: formattedBody,
             timestamp: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000),
             isOutgoing: event.isOwn,
             sendStatus: sendStatus,
