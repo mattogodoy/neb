@@ -112,6 +112,12 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
         let timeline = try await room.timeline()
         let _ = try await timeline.paginateBackwards(numEvents: UInt16(min(count, UInt(UInt16.max))))
     }
+
+    public func toggleReaction(roomID: String, eventID: String, emoji: String) async throws {
+        guard let handle = activeTimelines[roomID] else { throw NebError.roomNotFound(roomID) }
+        let itemID: EventOrTransactionId = .eventId(eventId: eventID)
+        let _ = try await handle.timeline.toggleReaction(itemId: itemID, key: emoji)
+    }
 }
 
 private struct TimelineHandle {
@@ -260,6 +266,15 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                 )
             }
 
+        let reactions: [NebReaction] = msgLike.reactions.map { reaction in
+            NebReaction(
+                emoji: reaction.key,
+                count: reaction.senders.count,
+                senderIDs: reaction.senders.map(\.senderId),
+                includesMe: reaction.senders.contains { $0.senderId == myUserID }
+            )
+        }
+
         return NebMessage(
             id: eventID,
             roomID: roomID,
@@ -270,7 +285,8 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             timestamp: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000),
             isOutgoing: event.isOwn,
             sendStatus: sendStatus,
-            readReceipts: readReceipts
+            readReceipts: readReceipts,
+            reactions: reactions
         )
     }
 }
