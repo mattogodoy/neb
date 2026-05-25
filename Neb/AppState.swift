@@ -9,6 +9,7 @@ final class AppState {
     let roomAdapter: MatrixRoomAdapter
     let cryptoAdapter: MatrixCryptoAdapter
     let notificationAdapter: MatrixNotificationAdapter
+    let typingAdapter: MatrixTypingAdapter
 
     private(set) var loginViewModel: LoginViewModel
     private(set) var roomListViewModel: RoomListViewModel?
@@ -20,12 +21,14 @@ final class AppState {
         let room = MatrixRoomAdapter(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
         let crypto = MatrixCryptoAdapter(clientProvider: { auth.getClient() })
         let notification = MatrixNotificationAdapter()
+        let typing = MatrixTypingAdapter(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
 
         self.authAdapter = auth
         self.syncAdapter = sync
         self.roomAdapter = room
         self.cryptoAdapter = crypto
         self.notificationAdapter = notification
+        self.typingAdapter = typing
         self.loginViewModel = LoginViewModel(authService: auth)
     }
 
@@ -33,7 +36,8 @@ final class AppState {
         AvatarImageCache.shared.setClientProvider { [weak self] in self?.authAdapter.getClient() }
         roomListViewModel = RoomListViewModel(
             syncService: syncAdapter,
-            notificationService: notificationAdapter
+            notificationService: notificationAdapter,
+            typingService: typingAdapter
         )
         let _ = try? await notificationAdapter.requestPermission()
         try? await syncAdapter.startSync()
@@ -57,4 +61,9 @@ final class AppState {
 
     func makeRoomService() -> any RoomServiceProtocol { roomAdapter }
     func makeCryptoService() -> any CryptoServiceProtocol { cryptoAdapter }
+    func makeTypingService() -> any TypingServiceProtocol { typingAdapter }
+
+    var currentUserID: String? {
+        try? authAdapter.getClient()?.userId()
+    }
 }

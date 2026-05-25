@@ -5,6 +5,8 @@ struct MainView: View {
     @Bindable var roomListViewModel: RoomListViewModel
     let roomServiceProvider: () -> any RoomServiceProtocol
     var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
+    var typingServiceProvider: (() -> any TypingServiceProtocol)?
+    var currentUserID: String?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
     var homeserverURL: String = ""
     var onLogout: (() -> Void)?
@@ -71,7 +73,9 @@ struct MainView: View {
             if let newID {
                 timelineViewModel = TimelineViewModel(
                     roomID: newID,
-                    roomService: roomServiceProvider()
+                    roomService: roomServiceProvider(),
+                    typingService: typingServiceProvider?(),
+                    currentUserID: currentUserID
                 )
             } else {
                 timelineViewModel = nil
