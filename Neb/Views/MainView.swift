@@ -5,7 +5,9 @@ struct MainView: View {
     @Bindable var roomListViewModel: RoomListViewModel
     let roomServiceProvider: () -> any RoomServiceProtocol
     var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
+    var deviceVerificationStatus: DeviceVerificationStatus = .unknown
     @State private var showNewDM = false
+    @State private var showDeviceVerification = false
     @State private var timelineViewModel: TimelineViewModel?
 
     var body: some View {
@@ -32,6 +34,17 @@ struct MainView: View {
             }
         }
         .frame(minWidth: 700, minHeight: 500)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showDeviceVerification = true }) {
+                    Label(
+                        deviceVerificationStatus == .verified ? "Device Verified" : "Verify Device",
+                        systemImage: deviceVerificationStatus == .verified ? "lock.shield.fill" : "lock.shield"
+                    )
+                    .foregroundStyle(deviceVerificationStatus == .verified ? .green : .orange)
+                }
+            }
+        }
         .onChange(of: roomListViewModel.selectedRoom?.id) { _, newID in
             if let newID {
                 timelineViewModel = TimelineViewModel(
@@ -51,6 +64,14 @@ struct MainView: View {
                     }
                 }
             )
+        }
+        .sheet(isPresented: $showDeviceVerification) {
+            if let provider = cryptoServiceProvider {
+                DeviceVerificationView(
+                    viewModel: VerificationViewModel(cryptoService: provider()),
+                    isAlreadyVerified: deviceVerificationStatus == .verified
+                )
+            }
         }
     }
 }

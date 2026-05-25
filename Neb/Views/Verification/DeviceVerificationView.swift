@@ -3,6 +3,8 @@ import NebCore
 
 struct DeviceVerificationView: View {
     @Bindable var viewModel: VerificationViewModel
+    var isAlreadyVerified: Bool = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 20) {
@@ -31,30 +33,50 @@ struct DeviceVerificationView: View {
                 }
             }
 
-            if let action = viewModel.state.userAction {
-                Text(action)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+            if case .showingEmoji = viewModel.state {} else {
+                if let action = viewModel.state.userAction {
+                    Text(action)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
         }
         .padding(32)
         .frame(minWidth: 400, minHeight: 300)
     }
 
+    private func close() {
+        Task { await viewModel.cancelVerification() }
+        dismiss()
+    }
+
     private var idleView: some View {
-        Button("Verify This Device") {
-            Task { await viewModel.startDeviceVerification() }
+        VStack(spacing: 12) {
+            if isAlreadyVerified {
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.green)
+                Text("This device is already verified.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button(isAlreadyVerified ? "Verify Again" : "Verify This Device") {
+                Task { await viewModel.startDeviceVerification() }
+            }
+            .buttonStyle(.borderedProminent)
+
+            Button(isAlreadyVerified ? "Done" : "Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
         }
-        .buttonStyle(.borderedProminent)
     }
 
     private var waitingView: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Button("Cancel") {
-                Task { await viewModel.cancelVerification() }
-            }
+            Button("Cancel") { close() }
+                .keyboardShortcut(.cancelAction)
         }
     }
 
@@ -69,30 +91,52 @@ struct DeviceVerificationView: View {
     }
 
     private func emojiView(_ emoji: [VerificationEmoji]) -> some View {
-        VStack(spacing: 16) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
-                ForEach(Array(emoji.enumerated()), id: \.offset) { _, item in
-                    VStack(spacing: 4) {
-                        Text(item.symbol)
-                            .font(.system(size: 32))
-                        Text(item.description)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+        VStack(spacing: 24) {
+            Text("Confirm the emojis below match those shown on your other device.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            VStack(spacing: 20) {
+                let topRow = Array(emoji.prefix(4))
+                let bottomRow = Array(emoji.dropFirst(4))
+
+                HStack(spacing: 24) {
+                    ForEach(Array(topRow.enumerated()), id: \.offset) { _, item in
+                        emojiCell(item)
+                    }
+                }
+
+                HStack(spacing: 24) {
+                    ForEach(Array(bottomRow.enumerated()), id: \.offset) { _, item in
+                        emojiCell(item)
                     }
                 }
             }
 
             HStack(spacing: 12) {
-                Button("They Don't Match") {
-                    Task { await viewModel.declineEmoji() }
-                }
-
                 Button("They Match") {
                     Task { await viewModel.confirmEmoji() }
                 }
                 .buttonStyle(.borderedProminent)
+
+                Button("They Don't Match") {
+                    Task { await viewModel.declineEmoji() }
+                }
+                .buttonStyle(.plain)
             }
         }
+    }
+
+    private func emojiCell(_ item: VerificationEmoji) -> some View {
+        VStack(spacing: 6) {
+            Text(item.symbol)
+                .font(.system(size: 40))
+            Text(item.description)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: 80)
     }
 
     private var confirmedView: some View {
@@ -102,6 +146,8 @@ struct DeviceVerificationView: View {
                 .foregroundStyle(.green)
             Text("Device Verified")
                 .font(.headline)
+            Button("Done") { dismiss() }
+                .buttonStyle(.borderedProminent)
         }
     }
 
@@ -130,8 +176,9 @@ struct DeviceVerificationView: View {
     private var cancelledView: some View {
         VStack(spacing: 12) {
             Text("Verification was cancelled.")
-            Button("Try Again") { viewModel.reset() }
+            Button("Close") { dismiss() }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.cancelAction)
         }
     }
 }

@@ -42,9 +42,9 @@ struct TimelineView: View {
             if cryptoServiceProvider != nil {
                 ToolbarItem {
                     Button(action: { showVerification = true }) {
-                        Image(systemName: "checkmark.shield")
+                        Label("Verify Contact", systemImage: "person.badge.shield.checkmark")
+                            .foregroundStyle(.orange)
                     }
-                    .help("Verify Contact")
                 }
             }
         }

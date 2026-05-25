@@ -44,6 +44,12 @@ final class MockCryptoService: CryptoServiceProtocol, @unchecked Sendable {
         }
     }
 
+    func deviceVerificationStatusStream() -> AsyncStream<DeviceVerificationStatus> {
+        AsyncStream { continuation in
+            continuation.yield(.unverified)
+        }
+    }
+
     func recoveryKey() async throws -> String? {
         "mock-recovery-key-1234-5678-abcd"
     }

@@ -15,19 +15,23 @@ struct ContactVerificationView: View {
             Group {
                 switch viewModel.state {
                 case .idle:
-                    Button("Start Verification") {
-                        Task { await viewModel.startUserVerification(userID: contactName) }
+                    VStack(spacing: 12) {
+                        Button("Start Verification") {
+                            Task { await viewModel.startUserVerification(userID: contactName) }
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Cancel") { dismiss() }
+                            .keyboardShortcut(.cancelAction)
                     }
-                    .buttonStyle(.borderedProminent)
 
                 case .waitingForAcceptance:
                     VStack(spacing: 12) {
                         ProgressView()
                         Text("Waiting for \(contactName) to accept...")
                             .foregroundStyle(.secondary)
-                        Button("Cancel") {
-                            Task { await viewModel.cancelVerification() }
-                        }
+                        Button("Cancel") { close() }
+                            .keyboardShortcut(.cancelAction)
                     }
 
                 case .requested:
@@ -98,13 +102,19 @@ struct ContactVerificationView: View {
                 case .cancelled:
                     VStack(spacing: 12) {
                         Text("Verification was cancelled.")
-                        Button("Try Again") { viewModel.reset() }
+                        Button("Close") { dismiss() }
                             .buttonStyle(.borderedProminent)
+                            .keyboardShortcut(.cancelAction)
                     }
                 }
             }
         }
         .padding(32)
         .frame(minWidth: 400, minHeight: 300)
+    }
+
+    private func close() {
+        Task { await viewModel.cancelVerification() }
+        dismiss()
     }
 }

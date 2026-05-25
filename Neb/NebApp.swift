@@ -4,32 +4,44 @@ import NebCore
 @main
 struct NebApp: App {
     @State private var appState = AppState()
+    @State private var isRestoringSession = true
 
     var body: some Scene {
         WindowGroup {
             Group {
-                switch appState.loginViewModel.authState {
-                case .loggedIn:
-                    if let roomListVM = appState.roomListViewModel {
-                        MainView(
-                            roomListViewModel: roomListVM,
-                            roomServiceProvider: { appState.makeRoomService() },
-                            cryptoServiceProvider: { appState.makeCryptoService() }
-                        )
-                    } else {
-                        ProgressView("Starting sync...")
+                if isRestoringSession {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.large)
+                        Text("Neb")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
                     }
-                default:
-                    LoginView(viewModel: appState.loginViewModel)
+                    .frame(width: 400, height: 350)
+                } else {
+                    switch appState.loginViewModel.authState {
+                    case .loggedIn:
+                        if let roomListVM = appState.roomListViewModel {
+                            MainView(
+                                roomListViewModel: roomListVM,
+                                roomServiceProvider: { appState.makeRoomService() },
+                                cryptoServiceProvider: { appState.makeCryptoService() },
+                                deviceVerificationStatus: appState.deviceVerificationStatus
+                            )
+                        } else {
+                            ProgressView("Starting sync...")
+                        }
+                    default:
+                        LoginView(viewModel: appState.loginViewModel)
+                    }
                 }
             }
             .task {
-                let restored = await appState.loginViewModel.tryRestoreSession()
-                if restored {
-                    await appState.onLoggedIn()
-                }
+                let _ = await appState.loginViewModel.tryRestoreSession()
+                isRestoringSession = false
             }
-            .onChange(of: appState.loginViewModel.authState) { _, newState in
+            .onChange(of: appState.loginViewModel.authState) { oldState, newState in
+                guard oldState != newState else { return }
                 Task {
                     switch newState {
                     case .loggedIn:
