@@ -206,21 +206,46 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         }
 
         var senderName = event.sender
+        var senderAvatarURL: String? = nil
         switch event.senderProfile {
-        case .ready(let displayName, _, _):
+        case .ready(let displayName, _, let avatarUrl):
             if let name = displayName { senderName = name }
+            senderAvatarURL = avatarUrl
         default:
             break
         }
+
+        let sendStatus: SendStatus
+        if let localState = event.localSendState {
+            switch localState {
+            case .notSentYet(_):
+                sendStatus = .sending
+            case .sendingFailed(_, _):
+                sendStatus = .failed
+            case .sent(_):
+                sendStatus = .sent
+            }
+        } else {
+            sendStatus = .sent
+        }
+
+        let readReceipts: [ReadReceipt] = event.readReceipts
+            .filter { $0.key != myUserID }
+            .map { (userID, _) in
+                ReadReceipt(userID: userID, displayName: userID)
+            }
 
         return NebMessage(
             id: eventID,
             roomID: roomID,
             senderID: event.sender,
             senderDisplayName: senderName,
+            senderAvatarURL: senderAvatarURL,
             body: body,
             timestamp: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000),
-            isOutgoing: event.isOwn
+            isOutgoing: event.isOwn,
+            sendStatus: sendStatus,
+            readReceipts: readReceipts
         )
     }
 }
