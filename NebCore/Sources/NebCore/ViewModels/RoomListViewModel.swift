@@ -29,15 +29,28 @@ public final class RoomListViewModel {
     private let notificationService: (any NotificationServiceProtocol)?
     private var previousUnreadCounts: [String: UInt] = [:]
     @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
+    private let typingService: (any TypingServiceProtocol)?
+    private var roomTypingUsers: [String: [NebUser]] = [:]
+    @ObservationIgnored nonisolated(unsafe) private var typingTasks: [String: Task<Void, Never>] = [:]
 
-    public init(syncService: any SyncServiceProtocol, notificationService: (any NotificationServiceProtocol)? = nil) {
+    public init(
+        syncService: any SyncServiceProtocol,
+        notificationService: (any NotificationServiceProtocol)? = nil,
+        typingService: (any TypingServiceProtocol)? = nil
+    ) {
         self.syncService = syncService
         self.notificationService = notificationService
+        self.typingService = typingService
         startObserving()
     }
 
     deinit {
         syncTask?.cancel()
+        for task in typingTasks.values { task.cancel() }
+    }
+
+    public func typingUsers(for roomID: String) -> [NebUser] {
+        roomTypingUsers[roomID] ?? []
     }
 
     public func selectRoom(_ room: NebRoom?) {
@@ -56,8 +69,33 @@ public final class RoomListViewModel {
 
                 let oldRooms = self.allRooms
                 self.allRooms = rooms
+                self.updateTypingSubscriptions(for: rooms)
                 await self.notificationService?.updateBadgeCount(self.totalUnreadCount)
                 await self.postNotificationsForNewMessages(oldRooms: oldRooms, newRooms: rooms)
+            }
+        }
+    }
+
+    private func updateTypingSubscriptions(for rooms: [NebRoom]) {
+        guard let typingService else { return }
+
+        let currentRoomIDs = Set(rooms.map(\.id))
+        let subscribedRoomIDs = Set(typingTasks.keys)
+
+        // Cancel subscriptions for rooms no longer in the list
+        for roomID in subscribedRoomIDs.subtracting(currentRoomIDs) {
+            typingTasks[roomID]?.cancel()
+            typingTasks.removeValue(forKey: roomID)
+            roomTypingUsers.removeValue(forKey: roomID)
+        }
+
+        // Subscribe to new rooms
+        for roomID in currentRoomIDs.subtracting(subscribedRoomIDs) {
+            typingTasks[roomID] = Task { [weak self] in
+                for await users in typingService.typingUsersStream(roomID: roomID) {
+                    guard !Task.isCancelled else { break }
+                    self?.roomTypingUsers[roomID] = users
+                }
             }
         }
     }

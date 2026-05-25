@@ -75,3 +75,46 @@ import Testing
     #expect(dms.first?.name == "Alice")
     #expect(groups.isEmpty)
 }
+
+@Test func tracksTypingUsersPerRoom() async throws {
+    let syncService = MockSyncService()
+    let typingService = MockTypingService()
+    let vm = await RoomListViewModel(syncService: syncService, typingService: typingService)
+
+    syncService.emitRooms([
+        NebRoom(id: "!room:x", name: "Alice", isDirect: true),
+    ])
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    let alice = NebUser(id: "@alice:x", displayName: "Alice")
+    typingService.emitTypingUsers(roomID: "!room:x", users: [alice])
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    let typing = await vm.typingUsers(for: "!room:x")
+    #expect(typing.count == 1)
+    #expect(typing.first?.id == "@alice:x")
+}
+
+@Test func typingUsersClearWhenEmpty() async throws {
+    let syncService = MockSyncService()
+    let typingService = MockTypingService()
+    let vm = await RoomListViewModel(syncService: syncService, typingService: typingService)
+
+    syncService.emitRooms([
+        NebRoom(id: "!room:x", name: "Alice", isDirect: true),
+    ])
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    let alice = NebUser(id: "@alice:x", displayName: "Alice")
+    typingService.emitTypingUsers(roomID: "!room:x", users: [alice])
+    try await Task.sleep(for: .milliseconds(50))
+
+    typingService.emitTypingUsers(roomID: "!room:x", users: [])
+    try await Task.sleep(for: .milliseconds(50))
+
+    let typing = await vm.typingUsers(for: "!room:x")
+    #expect(typing.isEmpty)
+}
