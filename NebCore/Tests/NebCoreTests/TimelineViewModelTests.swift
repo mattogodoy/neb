@@ -116,3 +116,59 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
     #expect(typing.count == 1)
     #expect(typing.first?.id == "@alice:x")
 }
+
+@Test func sendsTypingNoticeOnComposerChange() async throws {
+    let roomService = MockRoomService()
+    let typingService = MockTypingService()
+    let vm = await TimelineViewModel(
+        roomID: "!room:x",
+        roomService: roomService,
+        typingService: typingService,
+        currentUserID: "@me:x"
+    )
+
+    await vm.onComposerChanged(text: "Hello")
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    #expect(typingService.typingNotices.contains { $0.roomID == "!room:x" && $0.isTyping == true })
+}
+
+@Test func sendsStopTypingOnSend() async throws {
+    let roomService = MockRoomService()
+    let typingService = MockTypingService()
+    let vm = await TimelineViewModel(
+        roomID: "!room:x",
+        roomService: roomService,
+        typingService: typingService,
+        currentUserID: "@me:x"
+    )
+
+    await vm.onComposerChanged(text: "Hello")
+    try await Task.sleep(for: .milliseconds(50))
+
+    await vm.sendMessage("Hello")
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    let lastNotice = typingService.typingNotices.last
+    #expect(lastNotice?.roomID == "!room:x")
+    #expect(lastNotice?.isTyping == false)
+}
+
+@Test func doesNotSendTypingForEmptyText() async throws {
+    let roomService = MockRoomService()
+    let typingService = MockTypingService()
+    let vm = await TimelineViewModel(
+        roomID: "!room:x",
+        roomService: roomService,
+        typingService: typingService,
+        currentUserID: "@me:x"
+    )
+
+    await vm.onComposerChanged(text: "")
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    #expect(typingService.typingNotices.isEmpty)
+}

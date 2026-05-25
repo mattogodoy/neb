@@ -14,6 +14,8 @@ public final class TimelineViewModel {
     private let currentUserID: String?
     @ObservationIgnored nonisolated(unsafe) private var timelineTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) private var typingDebounceTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) private var isCurrentlyTyping = false
 
     public init(
         roomID: String,
@@ -32,11 +34,34 @@ public final class TimelineViewModel {
     deinit {
         timelineTask?.cancel()
         typingTask?.cancel()
+        typingDebounceTask?.cancel()
+    }
+
+    public func onComposerChanged(text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmed.isEmpty {
+            stopTyping()
+            return
+        }
+
+        if !isCurrentlyTyping {
+            isCurrentlyTyping = true
+            Task { try? await typingService?.sendTypingNotice(roomID: roomID, isTyping: true) }
+        }
+
+        typingDebounceTask?.cancel()
+        typingDebounceTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            await self?.stopTyping()
+        }
     }
 
     public func sendMessage(_ body: String) async {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        stopTyping()
         do {
             try await roomService.sendMessage(roomID: roomID, body: trimmed)
         } catch {}
@@ -62,6 +87,14 @@ public final class TimelineViewModel {
         do {
             try await roomService.toggleReaction(roomID: roomID, eventID: eventID, emoji: emoji)
         } catch {}
+    }
+
+    private func stopTyping() {
+        guard isCurrentlyTyping else { return }
+        isCurrentlyTyping = false
+        typingDebounceTask?.cancel()
+        typingDebounceTask = nil
+        Task { try? await typingService?.sendTypingNotice(roomID: roomID, isTyping: false) }
     }
 
     private func startObserving() {
