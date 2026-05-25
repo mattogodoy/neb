@@ -44,6 +44,7 @@ struct MessageBubbleView: View {
                     Spacer()
                     ReadReceiptsView(receipts: message.readReceipts, homeserverURL: homeserverURL)
                 }
+                .padding(.top, 4)
             }
         }
         .contextMenu {
