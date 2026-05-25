@@ -23,6 +23,7 @@ struct MainView: View {
                 TimelineView(
                     viewModel: vm,
                     roomName: room.name,
+                    directUserID: room.directUserID,
                     cryptoServiceProvider: cryptoServiceProvider
                 )
             } else {

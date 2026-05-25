@@ -126,10 +126,25 @@ public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
 
                 var isDirect = false
                 var unread: UInt64 = 0
+                var directUserID: String? = nil
                 do {
                     let info = try await room.roomInfo()
                     isDirect = info.isDirect
                     unread = info.numUnreadNotifications
+
+                    if isDirect {
+                        let myUserID = try? self.clientProvider()?.userId()
+                        let members = try await room.membersNoSync()
+                        while let chunk = members.nextChunk(chunkSize: 10) {
+                            for member in chunk {
+                                if member.userId != myUserID && member.membership == .join {
+                                    directUserID = member.userId
+                                    break
+                                }
+                            }
+                            if directUserID != nil { break }
+                        }
+                    }
                 } catch {
                     logger.warning("Failed to get room info for \(roomID): \(error.localizedDescription)")
                 }
@@ -141,6 +156,7 @@ public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
                     lastMessageTimestamp: nil,
                     unreadCount: UInt(unread),
                     isDirect: isDirect,
+                    directUserID: directUserID,
                     memberCount: 0
                 ))
             }

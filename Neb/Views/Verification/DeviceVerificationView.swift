@@ -108,7 +108,7 @@ struct DeviceVerificationView: View {
                 Image(systemName: icon)
                     .font(.system(size: 20))
                     .frame(width: 36)
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)

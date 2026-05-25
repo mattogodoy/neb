@@ -7,6 +7,7 @@ public struct NebRoom: Identifiable, Equatable, Sendable {
     public var lastMessageTimestamp: Date?
     public var unreadCount: UInt
     public var isDirect: Bool
+    public var directUserID: String?
     public var memberCount: UInt
 
     public init(
@@ -16,6 +17,7 @@ public struct NebRoom: Identifiable, Equatable, Sendable {
         lastMessageTimestamp: Date? = nil,
         unreadCount: UInt = 0,
         isDirect: Bool = false,
+        directUserID: String? = nil,
         memberCount: UInt = 0
     ) {
         self.id = id
@@ -24,6 +26,7 @@ public struct NebRoom: Identifiable, Equatable, Sendable {
         self.lastMessageTimestamp = lastMessageTimestamp
         self.unreadCount = unreadCount
         self.isDirect = isDirect
+        self.directUserID = directUserID
         self.memberCount = memberCount
     }
 }
