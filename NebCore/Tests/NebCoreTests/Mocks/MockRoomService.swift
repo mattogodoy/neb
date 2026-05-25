@@ -30,6 +30,12 @@ final class MockRoomService: RoomServiceProtocol, @unchecked Sendable {
 
     func paginateBackwards(roomID: String, count: UInt) async throws {}
 
+    var toggledReactions: [(roomID: String, eventID: String, emoji: String)] = []
+
+    func toggleReaction(roomID: String, eventID: String, emoji: String) async throws {
+        toggledReactions.append((roomID: roomID, eventID: eventID, emoji: emoji))
+    }
+
     func emitMessages(roomID: String, messages: [NebMessage]) {
         self.messages[roomID] = messages
         timelineContinuations[roomID]?.yield(messages)
