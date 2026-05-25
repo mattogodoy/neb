@@ -44,6 +44,14 @@ struct TimelineView: View {
                             .padding(.top, first ? 8 : 2)
                             .id(message.id)
                         }
+
+                        if !viewModel.typingUsers.isEmpty {
+                            TypingIndicatorView(users: viewModel.typingUsers)
+                                .padding(.horizontal, 12)
+                                .padding(.top, 8)
+                                .transition(.opacity)
+                                .id("typing-indicator")
+                        }
                     }
                     .padding(.vertical, 8)
                 }
@@ -55,15 +63,16 @@ struct TimelineView: View {
                         }
                     }
                 }
+                .onChange(of: viewModel.typingUsers.isEmpty) { _, isEmpty in
+                    if !isEmpty {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            proxy.scrollTo("typing-indicator", anchor: .bottom)
+                        }
+                    }
+                }
             }
 
             Divider()
-
-            if !viewModel.typingUsers.isEmpty {
-                TypingIndicatorView(users: viewModel.typingUsers)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.typingUsers.isEmpty)
-            }
 
             MessageComposerView(viewModel: viewModel)
         }
