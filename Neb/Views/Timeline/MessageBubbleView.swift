@@ -169,20 +169,25 @@ struct MessageBubbleView: View {
 
     private func bubbleWithHover<Content: View>(smileyOnLeft: Bool, @ViewBuilder content: () -> Content) -> some View {
         HStack(spacing: 4) {
-            if smileyOnLeft && isHovered && !showQuickReact && !showEmojiPicker {
-                smileyButton
-            } else if smileyOnLeft {
-                Color.clear.frame(width: 22, height: 22)
+            if smileyOnLeft {
+                if isHovered && !showQuickReact && !showEmojiPicker {
+                    smileyButton
+                } else {
+                    Color.clear.frame(width: 22, height: 22)
+                }
             }
 
             content()
 
-            if !smileyOnLeft && isHovered && !showQuickReact && !showEmojiPicker {
-                smileyButton
-            } else if !smileyOnLeft {
-                Color.clear.frame(width: 22, height: 22)
+            if !smileyOnLeft {
+                if isHovered && !showQuickReact && !showEmojiPicker {
+                    smileyButton
+                } else {
+                    Color.clear.frame(width: 22, height: 22)
+                }
             }
         }
+        .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .popover(isPresented: $showQuickReact, arrowEdge: .top) {
             QuickReactBar(
