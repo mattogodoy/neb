@@ -1,4 +1,5 @@
 import Foundation
+import MatrixRustSDK
 #if canImport(AppKit)
 import AppKit
 public typealias PlatformImage = NSImage
@@ -13,12 +14,17 @@ public final class AvatarImageCache: @unchecked Sendable {
     private let cache = NSCache<NSString, PlatformImage>()
     private var inflight: [String: Task<PlatformImage?, Never>] = [:]
     private let lock = NSLock()
+    private var clientProvider: (() -> Client?)?
 
     private init() {
         cache.countLimit = 200
     }
 
-    public func image(for mxcURL: String, homeserverURL: String) async -> PlatformImage? {
+    public func setClientProvider(_ provider: @escaping () -> Client?) {
+        self.clientProvider = provider
+    }
+
+    public func image(for mxcURL: String, homeserverURL: String = "") async -> PlatformImage? {
         if let cached = cache.object(forKey: mxcURL as NSString) {
             return cached
         }
@@ -29,15 +35,10 @@ public final class AvatarImageCache: @unchecked Sendable {
         }
 
         let task = Task<PlatformImage?, Never> {
-            guard let httpURL = self.thumbnailURL(mxc: mxcURL, homeserver: homeserverURL) else { return nil }
-            do {
-                let (data, _) = try await URLSession.shared.data(from: httpURL)
-                guard let image = PlatformImage(data: data) else { return nil }
-                self.cache.setObject(image, forKey: mxcURL as NSString)
-                return image
-            } catch {
-                return nil
-            }
+            guard let data = await self.downloadThumbnail(mxcURL: mxcURL) else { return nil }
+            guard let image = PlatformImage(data: data) else { return nil }
+            self.cache.setObject(image, forKey: mxcURL as NSString)
+            return image
         }
 
         lock.withLock { inflight[mxcURL] = task }
@@ -49,10 +50,13 @@ public final class AvatarImageCache: @unchecked Sendable {
         return result
     }
 
-    private func thumbnailURL(mxc: String, homeserver: String) -> URL? {
-        guard mxc.hasPrefix("mxc://") else { return nil }
-        let path = String(mxc.dropFirst(6))
-        let base = homeserver.hasSuffix("/") ? String(homeserver.dropLast()) : homeserver
-        return URL(string: "\(base)/_matrix/media/v3/thumbnail/\(path)?width=64&height=64&method=crop")
+    private func downloadThumbnail(mxcURL: String) async -> Data? {
+        guard let client = clientProvider?() else { return nil }
+        do {
+            let source = try MediaSource.fromUrl(url: mxcURL)
+            return try await client.getMediaThumbnail(mediaSource: source, width: 64, height: 64)
+        } catch {
+            return nil
+        }
     }
 }

@@ -30,6 +30,7 @@ final class AppState {
     }
 
     func onLoggedIn() async {
+        AvatarImageCache.shared.setClientProvider { [weak self] in self?.authAdapter.getClient() }
         roomListViewModel = RoomListViewModel(
             syncService: syncAdapter,
             notificationService: notificationAdapter
