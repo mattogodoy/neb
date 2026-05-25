@@ -43,6 +43,19 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
                     myUserID: myUserID,
                     continuation: continuation
                 )
+
+                if let members = try? await room.membersNoSync() {
+                    while let chunk = members.nextChunk(chunkSize: 50) {
+                        for member in chunk {
+                            listener.cacheProfile(
+                                userID: member.userId,
+                                name: member.displayName ?? member.userId,
+                                avatarURL: member.avatarUrl
+                            )
+                        }
+                    }
+                }
+
                 let listenerHandle = await timeline.addListener(listener: listener)
 
                 self.activeTimelines[roomID] = TimelineHandle(
@@ -119,6 +132,10 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         self.roomID = roomID
         self.myUserID = myUserID
         self.continuation = continuation
+    }
+
+    func cacheProfile(userID: String, name: String, avatarURL: String?) {
+        profileCache[userID] = (name: name, avatarURL: avatarURL)
     }
 
     func onUpdate(diff: [TimelineDiff]) {

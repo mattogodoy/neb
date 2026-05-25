@@ -17,33 +17,36 @@ struct MessageBubbleView: View {
     private var isLast: Bool { groupPosition == .last || groupPosition == .alone }
 
     var body: some View {
-        if message.isOutgoing {
-            outgoingBubble
-        } else {
-            incomingBubble
+        VStack(alignment: .trailing, spacing: 2) {
+            if message.isOutgoing {
+                outgoingBubble
+            } else {
+                incomingBubble
+            }
+
+            if !message.readReceipts.isEmpty {
+                HStack {
+                    Spacer()
+                    ReadReceiptsView(receipts: message.readReceipts, homeserverURL: homeserverURL)
+                }
+            }
         }
     }
 
     // MARK: - Outgoing
 
     private var outgoingBubble: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            HStack {
-                Spacer(minLength: 60)
-                outgoingBubbleContent
-                    .background(Color.accentColor.opacity(0.8))
-                    .foregroundStyle(.white)
-                    .clipShape(BubbleShape(
-                        topLeft: 12,
-                        topRight: isFirst ? 12 : 2,
-                        bottomLeft: 12,
-                        bottomRight: isLast ? 12 : 2
-                    ))
-            }
-
-            if isLast && !message.readReceipts.isEmpty {
-                ReadReceiptsView(receipts: message.readReceipts, homeserverURL: homeserverURL)
-            }
+        HStack {
+            Spacer(minLength: 60)
+            outgoingBubbleContent
+                .background(Color.accentColor.opacity(0.8))
+                .foregroundStyle(.white)
+                .clipShape(BubbleShape(
+                    topLeft: 12,
+                    topRight: isFirst ? 12 : 2,
+                    bottomLeft: 12,
+                    bottomRight: isLast ? 12 : 2
+                ))
         }
     }
 
