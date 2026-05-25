@@ -14,7 +14,7 @@ struct MessageComposerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let query = emojiQuery, !emojiResults.isEmpty {
+            if let _ = emojiQuery, !emojiResults.isEmpty {
                 emojiSuggestions
             }
 
