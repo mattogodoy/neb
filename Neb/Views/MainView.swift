@@ -17,6 +17,7 @@ struct MainView: View {
         NavigationSplitView {
             SidebarView(
                 viewModel: roomListViewModel,
+                homeserverURL: homeserverURL,
                 onNewDM: { showNewDM = true }
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)

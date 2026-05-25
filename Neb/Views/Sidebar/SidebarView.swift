@@ -3,6 +3,7 @@ import NebCore
 
 struct SidebarView: View {
     @Bindable var viewModel: RoomListViewModel
+    var homeserverURL: String = ""
     var onNewDM: () -> Void
 
     @State private var dmSectionExpanded = true
@@ -31,7 +32,7 @@ struct SidebarView: View {
             )) {
                 Section(isExpanded: $dmSectionExpanded) {
                     ForEach(viewModel.directMessages) { room in
-                        RoomRowView(room: room)
+                        RoomRowView(room: room, homeserverURL: homeserverURL)
                             .tag(room.id)
                     }
                 } header: {
@@ -40,7 +41,7 @@ struct SidebarView: View {
 
                 Section(isExpanded: $groupSectionExpanded) {
                     ForEach(viewModel.groups) { room in
-                        RoomRowView(room: room)
+                        RoomRowView(room: room, homeserverURL: homeserverURL)
                             .tag(room.id)
                     }
                 } header: {
