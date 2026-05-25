@@ -14,24 +14,53 @@ struct MessageComposerView: View {
                 emojiSuggestions
             }
 
+            if viewModel.editingMessage != nil {
+                HStack(spacing: 4) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Text("Editing")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(action: { viewModel.cancelEditing() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, 2)
+            }
+
             HStack(spacing: 8) {
-                TextField("Type a message...", text: $viewModel.composerText)
+                TextField(viewModel.editingMessage != nil ? "Edit message..." : "Type a message...", text: $viewModel.composerText)
                     .textFieldStyle(.plain)
                     .focused($isFocused)
                     .onSubmit {
                         if emojiQuery != nil && !emojiResults.isEmpty {
                             insertEmoji(emojiResults[selectedIndex])
+                        } else if viewModel.editingMessage != nil {
+                            Task { await viewModel.submitEdit() }
                         } else {
                             send()
                         }
                     }
                     .onChange(of: viewModel.composerText) { _, newValue in
                         updateEmojiSearch(newValue)
-                        viewModel.onComposerChanged(text: newValue)
+                        if viewModel.editingMessage == nil {
+                            viewModel.onComposerChanged(text: newValue)
+                        }
                     }
                     .onKeyPress(.upArrow) {
                         if emojiQuery != nil && !emojiResults.isEmpty {
                             selectedIndex = max(0, selectedIndex - 1)
+                            return .handled
+                        }
+                        if viewModel.composerText.isEmpty && viewModel.editingMessage == nil {
+                            viewModel.startEditingLastMessage()
                             return .handled
                         }
                         return .ignored
@@ -49,11 +78,21 @@ struct MessageComposerView: View {
                             emojiResults = []
                             return .handled
                         }
+                        if viewModel.editingMessage != nil {
+                            viewModel.cancelEditing()
+                            return .handled
+                        }
                         return .ignored
                     }
 
-                Button(action: send) {
-                    Image(systemName: "arrow.up.circle.fill")
+                Button(action: {
+                    if viewModel.editingMessage != nil {
+                        Task { await viewModel.submitEdit() }
+                    } else {
+                        send()
+                    }
+                }) {
+                    Image(systemName: viewModel.editingMessage != nil ? "checkmark.circle.fill" : "arrow.up.circle.fill")
                         .font(.system(size: 24))
                         .foregroundStyle(Color.accentColor)
                 }

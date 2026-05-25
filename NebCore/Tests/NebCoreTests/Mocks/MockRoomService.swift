@@ -36,6 +36,8 @@ final class MockRoomService: RoomServiceProtocol, @unchecked Sendable {
         toggledReactions.append((roomID: roomID, eventID: eventID, emoji: emoji))
     }
 
+    func editMessage(roomID: String, eventID: String, newBody: String) async throws {}
+
     func emitMessages(roomID: String, messages: [NebMessage]) {
         self.messages[roomID] = messages
         timelineContinuations[roomID]?.yield(messages)

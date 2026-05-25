@@ -118,6 +118,13 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
         let itemID: EventOrTransactionId = .eventId(eventId: eventID)
         let _ = try await handle.timeline.toggleReaction(itemId: itemID, key: emoji)
     }
+
+    public func editMessage(roomID: String, eventID: String, newBody: String) async throws {
+        guard let handle = activeTimelines[roomID] else { throw NebError.roomNotFound(roomID) }
+        let itemID: EventOrTransactionId = .eventId(eventId: eventID)
+        let content = messageEventContentFromMarkdown(md: newBody)
+        try await handle.timeline.edit(eventOrTransactionId: itemID, newContent: .roomMessage(content: content))
+    }
 }
 
 private struct TimelineHandle {
@@ -212,9 +219,11 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         guard case .msgLike(let msgLike) = event.content else { return nil }
 
         let body: String
+        var isEdited = false
         switch msgLike.kind {
         case .message(let msgContent):
             body = msgContent.body
+            isEdited = msgContent.isEdited
         case .unableToDecrypt:
             body = "\u{1F512} Encrypted message (verify this device to decrypt)"
         default:
@@ -286,7 +295,9 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             isOutgoing: event.isOwn,
             sendStatus: sendStatus,
             readReceipts: readReceipts,
-            reactions: reactions
+            reactions: reactions,
+            isEdited: isEdited,
+            isEditable: event.isEditable && event.isOwn
         )
     }
 }

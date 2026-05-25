@@ -21,6 +21,7 @@
 		A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCE3A05F93C5768B2871FAA /* NebApp.swift */; };
 		AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145BD912A2D89307D0EC7E9B /* SidebarView.swift */; };
 		AC51D684A1C8FB2F36BE89E5 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F865AEBE26F67E8EC78563 /* AvatarView.swift */; };
+		C03A78494A843239DD9E10A9 /* TypingIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA30A616BFE2CBE3A04EF182 /* TypingIndicatorView.swift */; };
 		D330E098B0737A7D6433C45B /* EmojiData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4D5E9AC5A26021C1D0E531F /* EmojiData.swift */; };
 		D663AF41A6C69470AA8A7162 /* ReactionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455F0AB3BC0D230681A2204D /* ReactionBarView.swift */; };
 		DBB867147261FEA66794B285 /* DeviceVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */; };
@@ -49,6 +50,7 @@
 		C5F865AEBE26F67E8EC78563 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
 		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NebCore; path = NebCore; sourceTree = SOURCE_ROOT; };
 		D4A9A42E9CEF2F2E33992366 /* Neb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Neb.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EA30A616BFE2CBE3A04EF182 /* TypingIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingIndicatorView.swift; sourceTree = "<group>"; };
 		F5217C2605D6443D4E97BC0E /* ContactVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactVerificationView.swift; sourceTree = "<group>"; };
 		F8D7E64765408BD975A8E614 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		FA124BC3A057C6747E22FE0E /* MessageBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubbleView.swift; sourceTree = "<group>"; };
@@ -76,6 +78,7 @@
 				455F0AB3BC0D230681A2204D /* ReactionBarView.swift */,
 				458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */,
 				9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */,
+				EA30A616BFE2CBE3A04EF182 /* TypingIndicatorView.swift */,
 			);
 			path = Timeline;
 			sourceTree = "<group>";
@@ -237,6 +240,7 @@
 				E3B1A9D501AAF165C9C88C9E /* RoomRowView.swift in Sources */,
 				AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */,
 				7B0EB0332324DE102076B0A2 /* TimelineView.swift in Sources */,
+				C03A78494A843239DD9E10A9 /* TypingIndicatorView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

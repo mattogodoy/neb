@@ -104,6 +104,11 @@ struct MessageBubbleView: View {
                     .font(.system(size: 13))
 
                 HStack(spacing: 2) {
+                    if message.isEdited {
+                        Text("edited")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
                     Text(message.timestamp, style: .time)
                         .font(.system(size: 10))
                         .foregroundStyle(.white.opacity(0.6))
@@ -174,9 +179,16 @@ struct MessageBubbleView: View {
                             Text(message.body)
                                 .font(.system(size: 13))
 
-                            Text(message.timestamp, style: .time)
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
+                            HStack(spacing: 2) {
+                                if message.isEdited {
+                                    Text("edited")
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(.secondary.opacity(0.6))
+                                }
+                                Text(message.timestamp, style: .time)
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)

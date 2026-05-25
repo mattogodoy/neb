@@ -30,6 +30,8 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
     public var sendStatus: SendStatus
     public var readReceipts: [ReadReceipt]
     public var reactions: [NebReaction]
+    public var isEdited: Bool
+    public var isEditable: Bool
 
     public init(
         id: String,
@@ -42,7 +44,9 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         isOutgoing: Bool,
         sendStatus: SendStatus = .sent,
         readReceipts: [ReadReceipt] = [],
-        reactions: [NebReaction] = []
+        reactions: [NebReaction] = [],
+        isEdited: Bool = false,
+        isEditable: Bool = false
     ) {
         self.id = id
         self.roomID = roomID
@@ -55,5 +59,7 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         self.sendStatus = sendStatus
         self.readReceipts = readReceipts
         self.reactions = reactions
+        self.isEdited = isEdited
+        self.isEditable = isEditable
     }
 }

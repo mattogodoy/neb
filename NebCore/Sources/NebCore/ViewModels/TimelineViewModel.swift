@@ -7,6 +7,7 @@ public final class TimelineViewModel {
     public private(set) var typingUsers: [NebUser] = []
     public private(set) var isLoadingMore = false
     public var composerText: String = ""
+    public private(set) var editingMessage: NebMessage?
 
     private let roomID: String
     private let roomService: any RoomServiceProtocol
@@ -87,6 +88,31 @@ public final class TimelineViewModel {
         do {
             try await roomService.toggleReaction(roomID: roomID, eventID: eventID, emoji: emoji)
         } catch {}
+    }
+
+    public func startEditingLastMessage() {
+        guard let last = messages.last(where: { $0.isOutgoing && $0.isEditable }) else { return }
+        editingMessage = last
+        composerText = last.body
+    }
+
+    public func cancelEditing() {
+        editingMessage = nil
+        composerText = ""
+    }
+
+    public func submitEdit() async {
+        guard let editing = editingMessage else { return }
+        let newBody = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newBody.isEmpty, newBody != editing.body else {
+            cancelEditing()
+            return
+        }
+        do {
+            try await roomService.editMessage(roomID: roomID, eventID: editing.id, newBody: newBody)
+        } catch {}
+        editingMessage = nil
+        composerText = ""
     }
 
     private func stopTyping() {

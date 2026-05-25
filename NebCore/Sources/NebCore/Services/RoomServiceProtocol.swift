@@ -7,4 +7,5 @@ public protocol RoomServiceProtocol: Sendable {
     func createDM(userID: String) async throws -> String
     func paginateBackwards(roomID: String, count: UInt) async throws
     func toggleReaction(roomID: String, eventID: String, emoji: String) async throws
+    func editMessage(roomID: String, eventID: String, newBody: String) async throws
 }
