@@ -1,0 +1,103 @@
+import AppKit
+import SwiftUI
+import NebCore
+
+// NOTE: iOS future — replace NSViewRepresentable/NSTextView with
+// UIViewRepresentable/UITextView. Same public interface, same bindings.
+// Use #if os(macOS) / #else to branch when adding the iOS target.
+
+struct RichTextEditor: NSViewRepresentable {
+    @Binding var plainText: String
+    var onSubmit: (NSAttributedString) -> Void
+    var onTextChanged: (String) -> Void
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let textView = NSTextView()
+        textView.delegate = context.coordinator
+        textView.isRichText = true
+        textView.allowsUndo = true
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.font = .systemFont(ofSize: 13)
+        textView.textColor = .labelColor
+        textView.drawsBackground = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.textContainerInset = NSSize(width: 0, height: 4)
+
+        // Single-line height by default, grows with content
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: 0,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+
+        let scrollView = NSScrollView()
+        scrollView.documentView = textView
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.drawsBackground = false
+        scrollView.autohidesScrollers = true
+
+        // Constrain max height
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.heightAnchor.constraint(lessThanOrEqualToConstant: 150).isActive = true
+
+        context.coordinator.textView = textView
+
+        // Focus on appear
+        DispatchQueue.main.async {
+            textView.window?.makeFirstResponder(textView)
+        }
+
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        // Sync from SwiftUI to NSTextView only when cleared (after send)
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        if plainText.isEmpty && textView.string != "" {
+            textView.string = ""
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: RichTextEditor
+        weak var textView: NSTextView?
+
+        init(_ parent: RichTextEditor) {
+            self.parent = parent
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView else { return }
+            let text = textView.string
+            parent.plainText = text
+            parent.onTextChanged(text)
+        }
+
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                // Shift+Enter: insert newline
+                if NSEvent.modifierFlags.contains(.shift) {
+                    textView.insertNewlineIgnoringFieldEditor(nil)
+                    return true
+                }
+                // Enter: send
+                let attributed = textView.attributedString()
+                let text = textView.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { return true }
+                parent.onSubmit(NSAttributedString(attributedString: attributed))
+                return true
+            }
+            return false
+        }
+    }
+}
