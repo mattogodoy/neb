@@ -38,7 +38,11 @@ struct TimelineView: View {
                                 homeserverURL: homeserverURL,
                                 onToggleReaction: { emoji in
                                     Task { await viewModel.toggleReaction(eventID: message.id, emoji: emoji) }
-                                }
+                                },
+                                onEdit: message.isEditable ? {
+                                    viewModel.editingMessage = message
+                                    viewModel.composerText = message.body
+                                } : nil
                             )
                             .padding(.horizontal, 12)
                             .padding(.top, first ? 8 : 2)

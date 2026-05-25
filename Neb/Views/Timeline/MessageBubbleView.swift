@@ -11,6 +11,7 @@ struct MessageBubbleView: View {
     let isDM: Bool
     let homeserverURL: String
     let onToggleReaction: (String) -> Void
+    var onEdit: (() -> Void)?
 
     @State private var isHovered = false
     @State private var showQuickReact = false
@@ -51,6 +52,11 @@ struct MessageBubbleView: View {
         .contextMenu {
             Button("React...") {
                 showEmojiPicker = true
+            }
+            if message.isEditable {
+                Button("Edit") {
+                    onEdit?()
+                }
             }
         }
     }

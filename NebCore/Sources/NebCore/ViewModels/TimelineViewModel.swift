@@ -7,7 +7,7 @@ public final class TimelineViewModel {
     public private(set) var typingUsers: [NebUser] = []
     public private(set) var isLoadingMore = false
     public var composerText: String = ""
-    public private(set) var editingMessage: NebMessage?
+    public var editingMessage: NebMessage?
 
     private let roomID: String
     private let roomService: any RoomServiceProtocol
