@@ -51,7 +51,7 @@ struct MessageBubbleView: View {
         }
         .contextMenu {
             Button(action: { showEmojiPicker = true }) {
-                Label("React...", systemImage: "face.smiling")
+                Label("React", systemImage: "face.smiling")
             }
             if message.isEditable {
                 Button(action: { onEdit?() }) {
