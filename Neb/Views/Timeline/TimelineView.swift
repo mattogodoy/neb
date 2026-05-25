@@ -59,6 +59,12 @@ struct TimelineView: View {
 
             Divider()
 
+            if !viewModel.typingUsers.isEmpty {
+                TypingIndicatorView(users: viewModel.typingUsers)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .animation(.easeInOut(duration: 0.2), value: viewModel.typingUsers.isEmpty)
+            }
+
             MessageComposerView(viewModel: viewModel)
         }
         .navigationTitle(roomName)
