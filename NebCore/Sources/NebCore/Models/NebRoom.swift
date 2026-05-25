@@ -3,6 +3,7 @@ import Foundation
 public struct NebRoom: Identifiable, Equatable, Sendable {
     public let id: String
     public var name: String
+    public var avatarURL: String?
     public var lastMessage: String?
     public var lastMessageTimestamp: Date?
     public var unreadCount: UInt
@@ -13,6 +14,7 @@ public struct NebRoom: Identifiable, Equatable, Sendable {
     public init(
         id: String,
         name: String,
+        avatarURL: String? = nil,
         lastMessage: String? = nil,
         lastMessageTimestamp: Date? = nil,
         unreadCount: UInt = 0,
@@ -22,6 +24,7 @@ public struct NebRoom: Identifiable, Equatable, Sendable {
     ) {
         self.id = id
         self.name = name
+        self.avatarURL = avatarURL
         self.lastMessage = lastMessage
         self.lastMessageTimestamp = lastMessageTimestamp
         self.unreadCount = unreadCount
