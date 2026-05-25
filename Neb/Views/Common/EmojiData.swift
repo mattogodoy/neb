@@ -36,8 +36,12 @@ enum EmojiData {
 
     static func search(_ query: String) -> [EmojiItem] {
         let q = query.lowercased()
+        var seen = Set<String>()
         return categories.flatMap(\.emojis).filter { item in
-            item.emoji.contains(q) || item.keywords.contains { $0.contains(q) }
+            guard !seen.contains(item.emoji) else { return false }
+            let matches = item.emoji.contains(q) || item.keywords.contains { $0.contains(q) }
+            if matches { seen.insert(item.emoji) }
+            return matches
         }
     }
 
