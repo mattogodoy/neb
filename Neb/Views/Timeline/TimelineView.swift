@@ -47,9 +47,20 @@ struct TimelineView: View {
                     }
                     .padding(.vertical, 8)
                 }
-                .onChange(of: viewModel.messages.last?.id) { _, newID in
+                .onChange(of: viewModel.messages.last?.id) { oldID, newID in
                     if let id = newID {
-                        withAnimation(.easeOut(duration: 0.2)) {
+                        if oldID == nil {
+                            proxy.scrollTo(id, anchor: .bottom)
+                        } else {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(id, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+                .onAppear {
+                    if let id = viewModel.messages.last?.id {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             proxy.scrollTo(id, anchor: .bottom)
                         }
                     }
