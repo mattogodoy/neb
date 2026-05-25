@@ -15,6 +15,23 @@ class RichTextEditorState: ObservableObject {
     var applyFormatting: ((FormattingAction) -> Void)?
 }
 
+class AutoSizingScrollView: NSScrollView {
+    private let maxContentHeight: CGFloat = 150
+    private let minContentHeight: CGFloat = 24
+
+    override var intrinsicContentSize: NSSize {
+        guard let textView = documentView as? NSTextView,
+              let layoutManager = textView.layoutManager,
+              let textContainer = textView.textContainer else {
+            return NSSize(width: NSView.noIntrinsicMetric, height: minContentHeight)
+        }
+        layoutManager.ensureLayout(for: textContainer)
+        let textHeight = layoutManager.usedRect(for: textContainer).height + textView.textContainerInset.height * 2
+        let clampedHeight = min(max(textHeight, minContentHeight), maxContentHeight)
+        return NSSize(width: NSView.noIntrinsicMetric, height: clampedHeight)
+    }
+}
+
 struct RichTextEditor: NSViewRepresentable {
     @Binding var plainText: String
     @Binding var selectedRange: NSRange
@@ -24,7 +41,7 @@ struct RichTextEditor: NSViewRepresentable {
     var onSubmit: (NSAttributedString) -> Void
     var onTextChanged: (String) -> Void
 
-    func makeNSView(context: Context) -> NSScrollView {
+    func makeNSView(context: Context) -> AutoSizingScrollView {
         let textView = NSTextView()
         textView.delegate = context.coordinator
         textView.isRichText = true
@@ -48,7 +65,7 @@ struct RichTextEditor: NSViewRepresentable {
             height: CGFloat.greatestFiniteMagnitude
         )
 
-        let scrollView = NSScrollView()
+        let scrollView = AutoSizingScrollView()
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -72,7 +89,7 @@ struct RichTextEditor: NSViewRepresentable {
         return scrollView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+    func updateNSView(_ scrollView: AutoSizingScrollView, context: Context) {
         // Sync from SwiftUI to NSTextView only when cleared (after send)
         guard let textView = scrollView.documentView as? NSTextView else { return }
         if plainText.isEmpty && textView.string != "" {
@@ -97,6 +114,8 @@ struct RichTextEditor: NSViewRepresentable {
             let text = textView.string
             parent.plainText = text
             parent.onTextChanged(text)
+            // Resize scroll view to fit content
+            textView.enclosingScrollView?.invalidateIntrinsicContentSize()
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {

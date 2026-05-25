@@ -60,7 +60,7 @@ struct MessageComposerView: View {
                         }
                     }
                 )
-                .frame(minHeight: 24, maxHeight: 150)
+                .fixedSize(horizontal: false, vertical: true)
                 .popover(isPresented: Binding(
                     get: { selectedRange.length > 0 },
                     set: { if !$0 { selectedRange = NSRange(location: 0, length: 0) } }
