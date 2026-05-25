@@ -10,17 +10,17 @@ struct ReactionBarView: View {
         FlowLayout(spacing: 4) {
             ForEach(reactions, id: \.emoji) { reaction in
                 Button(action: { onToggle(reaction.emoji) }) {
-                    HStack(spacing: 3) {
+                    HStack(spacing: 2) {
                         Text(reaction.emoji)
-                            .font(.system(size: 14))
+                            .font(.system(size: 12))
                         if reaction.count > 1 {
                             Text("\(reaction.count)")
-                                .font(.system(size: 11))
+                                .font(.system(size: 10))
                                 .foregroundStyle(reaction.includesMe ? .white : .secondary)
                         }
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
                     .background(reaction.includesMe ? Color.accentColor.opacity(0.3) : Color(.controlBackgroundColor))
                     .clipShape(Capsule())
                     .overlay(

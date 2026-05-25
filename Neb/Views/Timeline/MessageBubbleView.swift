@@ -22,57 +22,22 @@ struct MessageBubbleView: View {
     private var isLast: Bool { groupPosition == .last || groupPosition == .alone }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            ZStack(alignment: .topTrailing) {
-                VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 4) {
-                    if message.isOutgoing {
-                        outgoingBubble
-                    } else {
-                        incomingBubble
-                    }
-
-                    if !message.reactions.isEmpty {
-                        ReactionBarView(
-                            reactions: message.reactions,
-                            onToggle: { emoji in react(emoji) },
-                            onAddReaction: { showEmojiPicker = true }
-                        )
-                    }
-                }
-
-                if isHovered && !showQuickReact && !showEmojiPicker {
-                    Button(action: { showQuickReact = true }) {
-                        Image(systemName: "face.smiling")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                            .padding(4)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .offset(x: 4, y: -4)
-                }
+        VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 0) {
+            if message.isOutgoing {
+                outgoingBubble
+            } else {
+                incomingBubble
             }
-            .onHover { hovering in
-                isHovered = hovering
-            }
-            .popover(isPresented: $showQuickReact, arrowEdge: .top) {
-                QuickReactBar(
-                    onReact: { emoji in
-                        showQuickReact = false
-                        react(emoji)
-                    },
-                    onOpenPicker: {
-                        showQuickReact = false
-                        showEmojiPicker = true
-                    }
+
+            if !message.reactions.isEmpty {
+                ReactionBarView(
+                    reactions: message.reactions,
+                    onToggle: { emoji in react(emoji) },
+                    onAddReaction: { showEmojiPicker = true }
                 )
-            }
-            .popover(isPresented: $showEmojiPicker, arrowEdge: .top) {
-                EmojiPickerView { emoji in
-                    showEmojiPicker = false
-                    react(emoji)
-                }
+                .font(.system(size: 12))
+                .offset(y: -4)
+                .padding(.leading, isDM ? 0 : avatarSize + 8)
             }
 
             if !message.readReceipts.isEmpty {
@@ -99,15 +64,17 @@ struct MessageBubbleView: View {
     private var outgoingBubble: some View {
         HStack {
             Spacer(minLength: 60)
-            outgoingBubbleContent
-                .background(Color.accentColor.opacity(0.8))
-                .foregroundStyle(.white)
-                .clipShape(BubbleShape(
-                    topLeft: 12,
-                    topRight: isFirst ? 12 : 2,
-                    bottomLeft: 12,
-                    bottomRight: isLast ? 12 : 2
-                ))
+            bubbleWithHover {
+                outgoingBubbleContent
+                    .background(Color.accentColor.opacity(0.8))
+                    .foregroundStyle(.white)
+                    .clipShape(BubbleShape(
+                        topLeft: 12,
+                        topRight: isFirst ? 12 : 2,
+                        bottomLeft: 12,
+                        bottomRight: isLast ? 12 : 2
+                    ))
+            }
         }
     }
 
@@ -172,28 +139,74 @@ struct MessageBubbleView: View {
                         .foregroundStyle(UserColorGenerator.color(for: message.senderID))
                 }
 
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    Text(message.body)
-                        .font(.system(size: 13))
+                bubbleWithHover {
+                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                        Text(message.body)
+                            .font(.system(size: 13))
 
-                    Text(message.timestamp, style: .time)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        Text(message.timestamp, style: .time)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(.controlBackgroundColor))
+                    .foregroundStyle(.primary)
+                    .clipShape(BubbleShape(
+                        topLeft: isFirst ? 12 : 2,
+                        topRight: 12,
+                        bottomLeft: isLast ? 12 : 2,
+                        bottomRight: 12
+                    ))
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color(.controlBackgroundColor))
-                .foregroundStyle(.primary)
-                .clipShape(BubbleShape(
-                    topLeft: isFirst ? 12 : 2,
-                    topRight: 12,
-                    bottomLeft: isLast ? 12 : 2,
-                    bottomRight: 12
-                ))
             }
 
             Spacer(minLength: 60)
         }
+    }
+
+    // MARK: - Hover + Popovers (anchored to bubble)
+
+    private func bubbleWithHover<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        ZStack(alignment: .topTrailing) {
+            content()
+
+            if isHovered && !showQuickReact && !showEmojiPicker {
+                smileyButton
+                    .offset(x: 4, y: -4)
+            }
+        }
+        .onHover { isHovered = $0 }
+        .popover(isPresented: $showQuickReact, arrowEdge: .top) {
+            QuickReactBar(
+                onReact: { emoji in
+                    showQuickReact = false
+                    react(emoji)
+                },
+                onOpenPicker: {
+                    showQuickReact = false
+                    showEmojiPicker = true
+                }
+            )
+        }
+        .popover(isPresented: $showEmojiPicker, arrowEdge: .top) {
+            EmojiPickerView { emoji in
+                showEmojiPicker = false
+                react(emoji)
+            }
+        }
+    }
+
+    private var smileyButton: some View {
+        Button(action: { showQuickReact = true }) {
+            Image(systemName: "face.smiling")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .padding(4)
+                .background(.ultraThinMaterial)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
