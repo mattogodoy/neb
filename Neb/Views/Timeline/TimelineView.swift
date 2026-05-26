@@ -11,9 +11,7 @@ struct TimelineView: View {
     @State private var showVerification = false
     @State private var isContactVerified = false
     @State private var firstUnreadMessageID: String?
-    @State private var hasInitiallyScrolled = false
-    @State private var canPaginate = false
-    @State private var lastKnownMessageID: String?
+    @State private var hasSetupComplete = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +27,7 @@ struct TimelineView: View {
                             .frame(height: 1)
                             .id("pagination-trigger")
                             .onAppear {
-                                guard canPaginate && !viewModel.isLoadingMore else { return }
+                                guard hasSetupComplete && !viewModel.isLoadingMore else { return }
                                 Task { await viewModel.loadMore() }
                             }
 
@@ -77,42 +75,33 @@ struct TimelineView: View {
                     .padding(.vertical, 8)
                 }
                 .defaultScrollAnchor(.bottom)
-                .onChange(of: viewModel.messages.count) { oldCount, newCount in
-                    guard newCount > 0 else { return }
-
-                    if !hasInitiallyScrolled {
-                        hasInitiallyScrolled = true
-
-                        let unread = Int(viewModel.initialUnreadCount)
-                        if unread > 0 && unread < newCount {
-                            let targetID = viewModel.messages[newCount - unread].id
-                            firstUnreadMessageID = targetID
-                            DispatchQueue.main.async {
-                                proxy.scrollTo("new-separator", anchor: .top)
-                            }
-                        } else {
-                            DispatchQueue.main.async {
-                                if let id = viewModel.messages.last?.id {
-                                    proxy.scrollTo(id, anchor: .bottom)
+                .task {
+                    // Wait for messages to arrive, then calculate unread marker
+                    for await messages in AsyncStream<[NebMessage]> { cont in
+                        let task = Task { @MainActor in
+                            var prev = 0
+                            while true {
+                                let count = viewModel.messages.count
+                                if count > 0 && count == prev {
+                                    cont.yield(viewModel.messages)
+                                    cont.finish()
+                                    return
                                 }
+                                prev = count
+                                try? await Task.sleep(for: .milliseconds(200))
                             }
                         }
-                        lastKnownMessageID = viewModel.messages.last?.id
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                            canPaginate = true
+                        cont.onTermination = { _ in task.cancel() }
+                    } {
+                        let unread = Int(viewModel.initialUnreadCount)
+                        if unread > 0 && unread < messages.count {
+                            firstUnreadMessageID = messages[messages.count - unread].id
+                            try? await Task.sleep(for: .milliseconds(100))
+                            proxy.scrollTo("new-separator", anchor: .top)
                         }
-                        return
+                        hasSetupComplete = true
+                        break
                     }
-
-                    let newLastID = viewModel.messages.last?.id
-                    if newLastID != lastKnownMessageID && oldCount > 0 {
-                        if let id = newLastID {
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                proxy.scrollTo(id, anchor: .bottom)
-                            }
-                        }
-                    }
-                    lastKnownMessageID = newLastID
                 }
             }
 
