@@ -34,6 +34,7 @@ struct MainView: View {
                     isDM: room.isDirect,
                     homeserverURL: homeserverURL
                 )
+                .id(room.id)
             } else {
                 ContentUnavailableView(
                     "No Conversation Selected",
