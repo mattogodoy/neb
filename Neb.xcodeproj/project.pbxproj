@@ -18,6 +18,7 @@
 		85437DFE20DBD0CC5157DA45 /* NewDMSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1292A80D0DE976126E22F973 /* NewDMSheet.swift */; };
 		938932BD820913837BC31EC9 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D7E64765408BD975A8E614 /* MainView.swift */; };
 		998F5A21992C15BE79A12299 /* MessageBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA124BC3A057C6747E22FE0E /* MessageBubbleView.swift */; };
+		9AD07ADA110FCE411DEDCDCB /* RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49DF09A31FF185152DC81A0 /* RichTextEditor.swift */; };
 		A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCE3A05F93C5768B2871FAA /* NebApp.swift */; };
 		AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145BD912A2D89307D0EC7E9B /* SidebarView.swift */; };
 		AC51D684A1C8FB2F36BE89E5 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F865AEBE26F67E8EC78563 /* AvatarView.swift */; };
@@ -28,6 +29,7 @@
 		E3A35DBB96EC3C84FFAF2EBE /* ReadReceiptsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */; };
 		E3B1A9D501AAF165C9C88C9E /* RoomRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1409F45F78A380DDDA49B9C /* RoomRowView.swift */; };
 		ECBBEF01342C0A00BC9B14D7 /* QuickReactBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE5BD6CC36497D248C28ADF /* QuickReactBar.swift */; };
+		FFBE67B8E317BC8AAFC0453F /* FormattingToolbarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D40DDEF708006365D412B27 /* FormattingToolbarView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +41,7 @@
 		455F0AB3BC0D230681A2204D /* ReactionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionBarView.swift; sourceTree = "<group>"; };
 		458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptsView.swift; sourceTree = "<group>"; };
 		6EB5117145C530E7DD757276 /* MessageComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageComposerView.swift; sourceTree = "<group>"; };
+		7D40DDEF708006365D412B27 /* FormattingToolbarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingToolbarView.swift; sourceTree = "<group>"; };
 		82C30D683D99BE5A348941CF /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		ABCE3A05F93C5768B2871FAA /* NebApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NebApp.swift; sourceTree = "<group>"; };
@@ -47,6 +50,7 @@
 		B4694CCD8FCDB113FA519BAB /* EmojiPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiPickerView.swift; sourceTree = "<group>"; };
 		B4D5E9AC5A26021C1D0E531F /* EmojiData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiData.swift; sourceTree = "<group>"; };
 		C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceVerificationView.swift; sourceTree = "<group>"; };
+		C49DF09A31FF185152DC81A0 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditor.swift; sourceTree = "<group>"; };
 		C5F865AEBE26F67E8EC78563 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
 		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NebCore; path = NebCore; sourceTree = SOURCE_ROOT; };
 		D4A9A42E9CEF2F2E33992366 /* Neb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Neb.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,11 +76,13 @@
 			isa = PBXGroup;
 			children = (
 				B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */,
+				7D40DDEF708006365D412B27 /* FormattingToolbarView.swift */,
 				FA124BC3A057C6747E22FE0E /* MessageBubbleView.swift */,
 				6EB5117145C530E7DD757276 /* MessageComposerView.swift */,
 				1EE5BD6CC36497D248C28ADF /* QuickReactBar.swift */,
 				455F0AB3BC0D230681A2204D /* ReactionBarView.swift */,
 				458745837CED08EE53EAADB5 /* ReadReceiptsView.swift */,
+				C49DF09A31FF185152DC81A0 /* RichTextEditor.swift */,
 				9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */,
 				EA30A616BFE2CBE3A04EF182 /* TypingIndicatorView.swift */,
 			);
@@ -228,6 +234,7 @@
 				DBB867147261FEA66794B285 /* DeviceVerificationView.swift in Sources */,
 				D330E098B0737A7D6433C45B /* EmojiData.swift in Sources */,
 				59697A975D71E671E8811F59 /* EmojiPickerView.swift in Sources */,
+				FFBE67B8E317BC8AAFC0453F /* FormattingToolbarView.swift in Sources */,
 				838E4CB92918FF5E08FFD52B /* LoginView.swift in Sources */,
 				938932BD820913837BC31EC9 /* MainView.swift in Sources */,
 				998F5A21992C15BE79A12299 /* MessageBubbleView.swift in Sources */,
@@ -237,6 +244,7 @@
 				ECBBEF01342C0A00BC9B14D7 /* QuickReactBar.swift in Sources */,
 				D663AF41A6C69470AA8A7162 /* ReactionBarView.swift in Sources */,
 				E3A35DBB96EC3C84FFAF2EBE /* ReadReceiptsView.swift in Sources */,
+				9AD07ADA110FCE411DEDCDCB /* RichTextEditor.swift in Sources */,
 				E3B1A9D501AAF165C9C88C9E /* RoomRowView.swift in Sources */,
 				AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */,
 				7B0EB0332324DE102076B0A2 /* TimelineView.swift in Sources */,
@@ -292,7 +300,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -354,7 +362,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -378,7 +386,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_LDFLAGS = (
 					"-Wl,-w",
 				);
@@ -401,7 +409,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_LDFLAGS = (
 					"-Wl,-w",
 				);
