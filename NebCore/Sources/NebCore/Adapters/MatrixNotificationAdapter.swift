@@ -1,8 +1,11 @@
 import Foundation
 import UserNotifications
+import os
 #if canImport(AppKit)
 import AppKit
 #endif
+
+private let logger = Logger(subsystem: "com.neb.app", category: "Notification")
 
 public final class MatrixNotificationAdapter: NotificationServiceProtocol, @unchecked Sendable {
     public init() {}
@@ -26,12 +29,20 @@ public final class MatrixNotificationAdapter: NotificationServiceProtocol, @unch
             trigger: nil
         )
 
-        try? await UNUserNotificationCenter.current().add(request)
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+        } catch {
+            logger.error("Failed to post notification for room \(roomID): \(error)")
+        }
     }
 
     public func updateBadgeCount(_ count: UInt) async {
         if #available(macOS 13.0, iOS 16.0, *) {
-            try? await UNUserNotificationCenter.current().setBadgeCount(Int(count))
+            do {
+                try await UNUserNotificationCenter.current().setBadgeCount(Int(count))
+            } catch {
+                logger.error("Failed to set badge count to \(count): \(error)")
+            }
         }
 
         #if canImport(AppKit)

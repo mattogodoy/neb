@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.neb.app", category: "Timeline")
 
 @MainActor
 @Observable
@@ -69,14 +72,14 @@ public final class TimelineViewModel {
         stopTyping()
         do {
             try await roomService.sendMessage(roomID: roomID, body: trimmed)
-        } catch {}
+        } catch { logger.error("Failed to send message in \(self.roomID): \(error)") }
     }
 
     public func markAsRead() async {
         guard let lastMessage = messages.last else { return }
         do {
             try await roomService.sendReadReceipt(roomID: roomID, eventID: lastMessage.id)
-        } catch {}
+        } catch { logger.error("Failed to send read receipt in \(self.roomID): \(error)") }
     }
 
     public func loadMore() async {
@@ -85,14 +88,14 @@ public final class TimelineViewModel {
         do {
             try await roomService.paginateBackwards(roomID: roomID, count: 50)
             try? await Task.sleep(for: .milliseconds(500))
-        } catch {}
+        } catch { logger.error("Failed to paginate backwards in \(self.roomID): \(error)") }
         isLoadingMore = false
     }
 
     public func toggleReaction(eventID: String, emoji: String) async {
         do {
             try await roomService.toggleReaction(roomID: roomID, eventID: eventID, emoji: emoji)
-        } catch {}
+        } catch { logger.error("Failed to toggle reaction in \(self.roomID): \(error)") }
     }
 
     public func startEditingLastMessage() {
@@ -115,7 +118,7 @@ public final class TimelineViewModel {
         }
         do {
             try await roomService.editMessage(roomID: roomID, eventID: editing.id, newBody: newBody)
-        } catch {}
+        } catch { logger.error("Failed to edit message \(editing.id) in \(self.roomID): \(error)") }
         editingMessage = nil
         composerText = ""
     }

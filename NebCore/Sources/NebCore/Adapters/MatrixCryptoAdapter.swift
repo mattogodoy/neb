@@ -186,7 +186,11 @@ private final class VerificationDelegate: SessionVerificationControllerDelegate,
     func didAcceptVerificationRequest() {
         logger.info("Other side accepted, starting SAS verification")
         Task {
-            try? await controller?.startSasVerification()
+            do {
+                try await controller?.startSasVerification()
+            } catch {
+                logger.error("Failed to start SAS verification: \(error)")
+            }
         }
     }
 

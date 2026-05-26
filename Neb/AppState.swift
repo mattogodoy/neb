@@ -1,5 +1,8 @@
 import Foundation
 import NebCore
+import os
+
+private let logger = Logger(subsystem: "com.neb.app", category: "AppState")
 
 @MainActor
 @Observable
@@ -39,9 +42,9 @@ final class AppState {
             notificationService: notificationAdapter,
             typingService: typingAdapter
         )
-        let _ = try? await notificationAdapter.requestPermission()
-        try? await syncAdapter.startSync()
-        try? await cryptoAdapter.setupVerificationListener()
+        do { let _ = try await notificationAdapter.requestPermission() } catch { logger.error("Failed to request notification permission: \(error)") }
+        do { try await syncAdapter.startSync() } catch { logger.error("Failed to start sync: \(error)") }
+        do { try await cryptoAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
 
         Task { [weak self] in
             guard let self else { return }
@@ -52,7 +55,7 @@ final class AppState {
     }
 
     func onLoggedOut() async {
-        try? await syncAdapter.stopSync()
+        do { try await syncAdapter.stopSync() } catch { logger.error("Failed to stop sync: \(error)") }
         roomListViewModel = nil
         deviceVerificationStatus = .unknown
     }

@@ -26,8 +26,12 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
                     return
                 }
                 if let rls = self.roomListServiceProvider() {
-                    try? await rls.subscribeToRooms(roomIds: [roomID])
-                    logger.info("Subscribed to room \(roomID)")
+                    do {
+                        try await rls.subscribeToRooms(roomIds: [roomID])
+                        logger.info("Subscribed to room \(roomID)")
+                    } catch {
+                        logger.error("Failed to subscribe to room \(roomID): \(error)")
+                    }
                 }
 
                 guard let room = try? client.getRoom(roomId: roomID) else {
