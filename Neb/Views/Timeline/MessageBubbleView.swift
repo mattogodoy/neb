@@ -68,7 +68,11 @@ struct MessageBubbleView: View {
             }
         }
         .contextMenu {
-            Button(action: { showEmojiPicker = true }) {
+            Button(action: {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    showQuickReact = true
+                }
+            }) {
                 Label("React", systemImage: "face.smiling")
             }
             if message.isEditable {
