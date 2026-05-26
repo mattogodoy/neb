@@ -136,8 +136,22 @@ public final class MatrixCryptoAdapter: CryptoServiceProtocol, @unchecked Sendab
     public func recoverKeys(recoveryKey: String) async throws {
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
         let encryption = client.encryption()
-        logger.info("Starting key recovery...")
-        try await encryption.recover(recoveryKey: recoveryKey)
+        logger.info("Starting key recovery (state: \(String(describing: encryption.recoveryState())))...")
+        do {
+            try await encryption.recoverAndFixBackup(recoveryKey: recoveryKey)
+        } catch let error as RecoveryError {
+            logger.error("Key recovery failed: \(error)")
+            switch error {
+            case .SecretStorage:
+                throw NebError.recoveryFailed("Could not find secret storage data on the server. You may need to reset your recovery key from another client.")
+            case .Import:
+                throw NebError.recoveryFailed("Invalid recovery key. Please check and try again.")
+            case .BackupExistsOnServer:
+                throw NebError.recoveryFailed("A key backup conflict was detected. Try disabling and re-enabling recovery from another client.")
+            case .Client:
+                throw NebError.recoveryFailed("Could not connect to the server. Check your connection and try again.")
+            }
+        }
         logger.info("Key recovery complete, waiting for E2EE initialization...")
         await encryption.waitForE2eeInitializationTasks()
         logger.info("E2EE initialization complete")
