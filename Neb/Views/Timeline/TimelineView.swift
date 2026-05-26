@@ -12,6 +12,7 @@ struct TimelineView: View {
     @State private var isContactVerified = false
     @State private var firstUnreadMessageID: String?
     @State private var hasInitiallyScrolled = false
+    @State private var canPaginate = false
     @State private var lastKnownMessageID: String?
 
     var body: some View {
@@ -28,7 +29,7 @@ struct TimelineView: View {
                             .frame(height: 1)
                             .id("pagination-trigger")
                             .onAppear {
-                                guard hasInitiallyScrolled && !viewModel.isLoadingMore else { return }
+                                guard canPaginate && !viewModel.isLoadingMore else { return }
                                 Task { await viewModel.loadMore() }
                             }
 
@@ -97,6 +98,9 @@ struct TimelineView: View {
                             }
                         }
                         lastKnownMessageID = viewModel.messages.last?.id
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            canPaginate = true
+                        }
                         return
                     }
 
