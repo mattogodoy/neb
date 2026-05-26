@@ -10,6 +10,8 @@ struct TimelineView: View {
     var homeserverURL: String = ""
     @State private var showVerification = false
     @State private var isContactVerified = false
+    @State private var firstUnreadMessageID: String?
+    @State private var hasCalculatedUnread = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,7 +37,7 @@ struct TimelineView: View {
                             let first = isFirstInGroup(current: message, previous: prev)
                             let last = isLastInGroup(current: message, next: next)
 
-                            if isFirstUnreadMessage(index: index) {
+                            if message.id == firstUnreadMessageID {
                                 newMessagesSeparator
                             }
 
@@ -120,18 +122,20 @@ struct TimelineView: View {
             await viewModel.markAsRead()
             await checkContactVerification()
         }
+        .onChange(of: viewModel.messages.count) { _, count in
+            if !hasCalculatedUnread && count > 0 {
+                let unread = Int(viewModel.initialUnreadCount)
+                if unread > 0 && unread < count {
+                    firstUnreadMessageID = viewModel.messages[count - unread].id
+                }
+                hasCalculatedUnread = true
+            }
+        }
         .onChange(of: showVerification) { _, isShowing in
             if !isShowing {
                 Task { await checkContactVerification() }
             }
         }
-    }
-
-    private func isFirstUnreadMessage(index: Int) -> Bool {
-        let unread = Int(viewModel.initialUnreadCount)
-        guard unread > 0 else { return false }
-        let firstUnreadIndex = viewModel.messages.count - unread
-        return index == firstUnreadIndex && firstUnreadIndex > 0
     }
 
     private var newMessagesSeparator: some View {
