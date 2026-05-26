@@ -328,13 +328,6 @@ extension String {
     }
 }
 
-private extension Character {
-    var isEmoji: Bool {
-        guard let scalar = unicodeScalars.first else { return false }
-        return scalar.properties.isEmoji && scalar.value > 0x23
-    }
-}
-
 private struct RightClickHandler: NSViewRepresentable {
     let onRightClick: () -> Void
 
