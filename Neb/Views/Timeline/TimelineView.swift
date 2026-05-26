@@ -16,12 +16,6 @@ struct TimelineView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        Color.clear
-                            .frame(height: 1)
-                            .onAppear {
-                                Task { await viewModel.loadMore() }
-                            }
-
                         if viewModel.isLoadingMore {
                             ProgressView()
                                 .padding()
@@ -53,6 +47,11 @@ struct TimelineView: View {
                             .padding(.horizontal, 12)
                             .padding(.top, first ? 8 : 2)
                             .id(message.id)
+                            .onAppear {
+                                if index == 0 {
+                                    Task { await viewModel.loadMore() }
+                                }
+                            }
                         }
 
                         if !viewModel.typingUsers.isEmpty {
