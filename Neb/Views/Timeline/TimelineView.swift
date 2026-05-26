@@ -11,7 +11,8 @@ struct TimelineView: View {
     @State private var showVerification = false
     @State private var isContactVerified = false
     @State private var firstUnreadMessageID: String?
-    @State private var hasCalculatedUnread = false
+    @State private var hasInitiallyScrolled = false
+    @State private var lastKnownMessageID: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,6 +40,7 @@ struct TimelineView: View {
 
                             if message.id == firstUnreadMessageID {
                                 newMessagesSeparator
+                                    .id("new-separator")
                             }
 
                             if shouldShowDaySeparator(current: message, previous: prev) {
@@ -74,19 +76,39 @@ struct TimelineView: View {
                     .padding(.vertical, 8)
                 }
                 .defaultScrollAnchor(.bottom)
-                .onChange(of: viewModel.messages.last?.id) { _, newID in
-                    if let id = newID {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo(id, anchor: .bottom)
+                .onChange(of: viewModel.messages.count) { oldCount, newCount in
+                    guard newCount > 0 else { return }
+
+                    if !hasInitiallyScrolled {
+                        hasInitiallyScrolled = true
+
+                        let unread = Int(viewModel.initialUnreadCount)
+                        if unread > 0 && unread < newCount {
+                            let targetID = viewModel.messages[newCount - unread].id
+                            firstUnreadMessageID = targetID
+                            DispatchQueue.main.async {
+                                proxy.scrollTo("new-separator", anchor: .top)
+                            }
+                        } else {
+                            DispatchQueue.main.async {
+                                if let id = viewModel.messages.last?.id {
+                                    proxy.scrollTo(id, anchor: .bottom)
+                                }
+                            }
+                        }
+                        lastKnownMessageID = viewModel.messages.last?.id
+                        return
+                    }
+
+                    let newLastID = viewModel.messages.last?.id
+                    if newLastID != lastKnownMessageID && oldCount > 0 {
+                        if let id = newLastID {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(id, anchor: .bottom)
+                            }
                         }
                     }
-                }
-                .onChange(of: viewModel.typingUsers.isEmpty) { _, isEmpty in
-                    if !isEmpty {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo("typing-indicator", anchor: .bottom)
-                        }
-                    }
+                    lastKnownMessageID = newLastID
                 }
             }
 
@@ -121,15 +143,6 @@ struct TimelineView: View {
         .task {
             await viewModel.markAsRead()
             await checkContactVerification()
-        }
-        .onChange(of: viewModel.messages.count) { _, count in
-            if !hasCalculatedUnread && count > 0 {
-                let unread = Int(viewModel.initialUnreadCount)
-                if unread > 0 && unread < count {
-                    firstUnreadMessageID = viewModel.messages[count - unread].id
-                }
-                hasCalculatedUnread = true
-            }
         }
         .onChange(of: showVerification) { _, isShowing in
             if !isShowing {
