@@ -35,6 +35,10 @@ struct TimelineView: View {
                             let first = isFirstInGroup(current: message, previous: prev)
                             let last = isLastInGroup(current: message, next: next)
 
+                            if message.id == viewModel.firstUnreadMessageID {
+                                newMessagesSeparator
+                            }
+
                             if shouldShowDaySeparator(current: message, previous: prev) {
                                 DaySeparatorView(date: message.timestamp)
                             }
@@ -121,6 +125,19 @@ struct TimelineView: View {
                 Task { await checkContactVerification() }
             }
         }
+    }
+
+    private var newMessagesSeparator: some View {
+        HStack(spacing: 8) {
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.5))
+                .frame(height: 1)
+            Text("NEW")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
 
     private func checkContactVerification() async {

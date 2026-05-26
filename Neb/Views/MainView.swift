@@ -71,11 +71,13 @@ struct MainView: View {
         }
         .onChange(of: roomListViewModel.selectedRoom?.id) { _, newID in
             if let newID {
+                let room = roomListViewModel.allRooms.first { $0.id == newID }
                 timelineViewModel = TimelineViewModel(
                     roomID: newID,
                     roomService: roomServiceProvider(),
                     typingService: typingServiceProvider?(),
-                    currentUserID: currentUserID
+                    currentUserID: currentUserID,
+                    initialUnreadCount: room?.unreadCount ?? 0
                 )
             } else {
                 timelineViewModel = nil
