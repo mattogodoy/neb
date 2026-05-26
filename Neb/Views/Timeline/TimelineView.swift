@@ -35,7 +35,7 @@ struct TimelineView: View {
                             let first = isFirstInGroup(current: message, previous: prev)
                             let last = isLastInGroup(current: message, next: next)
 
-                            if message.id == viewModel.firstUnreadMessageID {
+                            if isFirstUnreadMessage(index: index) {
                                 newMessagesSeparator
                             }
 
@@ -125,6 +125,13 @@ struct TimelineView: View {
                 Task { await checkContactVerification() }
             }
         }
+    }
+
+    private func isFirstUnreadMessage(index: Int) -> Bool {
+        let unread = Int(viewModel.initialUnreadCount)
+        guard unread > 0 else { return false }
+        let firstUnreadIndex = viewModel.messages.count - unread
+        return index == firstUnreadIndex && firstUnreadIndex > 0
     }
 
     private var newMessagesSeparator: some View {

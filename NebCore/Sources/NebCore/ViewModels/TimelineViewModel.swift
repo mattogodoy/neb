@@ -8,14 +8,12 @@ public final class TimelineViewModel {
     public private(set) var isLoadingMore = false
     public var composerText: String = ""
     public var editingMessage: NebMessage?
-    public private(set) var firstUnreadMessageID: String?
+    public let initialUnreadCount: UInt
 
     private let roomID: String
     private let roomService: any RoomServiceProtocol
     private let typingService: (any TypingServiceProtocol)?
     private let currentUserID: String?
-    private let initialUnreadCount: UInt
-    private var hasSetUnreadMarker = false
     @ObservationIgnored nonisolated(unsafe) private var timelineTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingDebounceTask: Task<Void, Never>?
@@ -136,15 +134,6 @@ public final class TimelineViewModel {
             for await messages in self.roomService.timelineStream(roomID: self.roomID) {
                 guard !Task.isCancelled else { break }
                 self.messages = messages
-
-                if !self.hasSetUnreadMarker && self.initialUnreadCount > 0 && !messages.isEmpty {
-                    self.hasSetUnreadMarker = true
-                    let unread = Int(self.initialUnreadCount)
-                    if unread < messages.count {
-                        self.firstUnreadMessageID = messages[messages.count - unread].id
-                    }
-                }
-
                 await self.markAsRead()
             }
         }
