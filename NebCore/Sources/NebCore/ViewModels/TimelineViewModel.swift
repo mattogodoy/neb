@@ -77,9 +77,11 @@ public final class TimelineViewModel {
 
     public func loadMore() async {
         guard !isLoadingMore else { return }
+        let currentCount = messages.count
         isLoadingMore = true
         do {
             try await roomService.paginateBackwards(roomID: roomID, count: 50)
+            try? await Task.sleep(for: .milliseconds(500))
         } catch {}
         isLoadingMore = false
     }
