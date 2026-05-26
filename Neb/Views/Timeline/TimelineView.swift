@@ -28,7 +28,7 @@ struct TimelineView: View {
                             .frame(height: 1)
                             .id("pagination-trigger")
                             .onAppear {
-                                guard !viewModel.isLoadingMore else { return }
+                                guard hasInitiallyScrolled && !viewModel.isLoadingMore else { return }
                                 Task { await viewModel.loadMore() }
                             }
 
