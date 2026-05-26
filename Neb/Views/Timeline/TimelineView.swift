@@ -16,6 +16,17 @@ struct TimelineView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
+                        GeometryReader { geo in
+                            let frame = geo.frame(in: .named("timelineScroll"))
+                            Color.clear
+                                .onChange(of: frame.minY) { _, minY in
+                                    if minY > -50 && !viewModel.isLoadingMore {
+                                        Task { await viewModel.loadMore() }
+                                    }
+                                }
+                        }
+                        .frame(height: 1)
+
                         if viewModel.isLoadingMore {
                             ProgressView()
                                 .padding()
@@ -47,11 +58,6 @@ struct TimelineView: View {
                             .padding(.horizontal, 12)
                             .padding(.top, first ? 8 : 2)
                             .id(message.id)
-                            .onAppear {
-                                if index == 0 {
-                                    Task { await viewModel.loadMore() }
-                                }
-                            }
                         }
 
                         if !viewModel.typingUsers.isEmpty {
@@ -64,6 +70,7 @@ struct TimelineView: View {
                     }
                     .padding(.vertical, 8)
                 }
+                .coordinateSpace(name: "timelineScroll")
                 .defaultScrollAnchor(.bottom)
                 .onChange(of: viewModel.messages.last?.id) { _, newID in
                     if let id = newID {
