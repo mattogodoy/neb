@@ -21,6 +21,15 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
     #expect(messages.isEmpty)
 }
 
+@Test func recordsInitialTimelineLoad() async throws {
+    let roomService = MockRoomService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    #expect(await vm.hasLoadedInitialTimeline)
+}
+
 @Test func receivesMessages() async throws {
     let roomService = MockRoomService()
     let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
@@ -35,6 +44,21 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
     let messages = await vm.messages
     #expect(messages.count == 2)
     #expect(messages.first?.body == "Hello")
+}
+
+@Test func receivesMessagesWithoutAutomaticallyMarkingRead() async throws {
+    let roomService = MockRoomService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+
+    roomService.emitMessages(roomID: "!room:x", messages: [
+        makeMessage(id: "evt-1", body: "Hello"),
+        makeMessage(id: "evt-2", body: "World"),
+    ])
+
+    try await Task.sleep(for: .milliseconds(50))
+
+    #expect(await vm.messages.count == 2)
+    #expect(roomService.readReceipts.isEmpty)
 }
 
 @Test func sendsReadReceiptForLastMessage() async throws {

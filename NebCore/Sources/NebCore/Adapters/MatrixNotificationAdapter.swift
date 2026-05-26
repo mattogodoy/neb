@@ -30,6 +30,10 @@ public final class MatrixNotificationAdapter: NotificationServiceProtocol, @unch
     }
 
     public func updateBadgeCount(_ count: UInt) async {
+        if #available(macOS 13.0, iOS 16.0, *) {
+            try? await UNUserNotificationCenter.current().setBadgeCount(Int(count))
+        }
+
         #if canImport(AppKit)
         await MainActor.run {
             NSApplication.shared.dockTile.badgeLabel = count > 0 ? "\(count)" : nil

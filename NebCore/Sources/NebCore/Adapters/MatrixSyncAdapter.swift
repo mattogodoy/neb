@@ -131,7 +131,7 @@ public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
                 do {
                     let info = try await room.roomInfo()
                     isDirect = info.isDirect
-                    unread = info.numUnreadNotifications
+                    unread = max(info.numUnreadMessages, info.numUnreadNotifications)
                     avatarURL = info.avatarUrl
 
                     if isDirect {

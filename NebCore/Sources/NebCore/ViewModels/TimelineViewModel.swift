@@ -6,6 +6,7 @@ public final class TimelineViewModel {
     public private(set) var messages: [NebMessage] = []
     public private(set) var typingUsers: [NebUser] = []
     public private(set) var isLoadingMore = false
+    public private(set) var hasLoadedInitialTimeline = false
     public var composerText: String = ""
     public var editingMessage: NebMessage?
     public let initialUnreadCount: UInt
@@ -80,7 +81,6 @@ public final class TimelineViewModel {
 
     public func loadMore() async {
         guard !isLoadingMore else { return }
-        let currentCount = messages.count
         isLoadingMore = true
         do {
             try await roomService.paginateBackwards(roomID: roomID, count: 50)
@@ -131,15 +131,10 @@ public final class TimelineViewModel {
     private func startObserving() {
         timelineTask = Task { [weak self] in
             guard let self else { return }
-            var lastMessageID: String?
             for await messages in self.roomService.timelineStream(roomID: self.roomID) {
                 guard !Task.isCancelled else { break }
-                let newLastID = messages.last?.id
                 self.messages = messages
-                if newLastID != lastMessageID {
-                    lastMessageID = newLastID
-                    await self.markAsRead()
-                }
+                self.hasLoadedInitialTimeline = true
             }
         }
     }

@@ -12,6 +12,12 @@ struct TimelineView: View {
     @State private var isContactVerified = false
     @State private var firstUnreadMessageID: String?
     @State private var hasSetupComplete = false
+    @State private var scrollCorrectionTask: Task<Void, Never>?
+
+    private enum ScrollTarget {
+        static let newSeparator = "new-separator"
+        static let bottom = "timeline-bottom"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,14 +29,6 @@ struct TimelineView: View {
                                 .padding()
                         }
 
-                        Color.clear
-                            .frame(height: 1)
-                            .id("pagination-trigger")
-                            .onAppear {
-                                guard hasSetupComplete && !viewModel.isLoadingMore else { return }
-                                Task { await viewModel.loadMore() }
-                            }
-
                         ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
                             let prev = index > 0 ? viewModel.messages[index - 1] : nil
                             let next = index < viewModel.messages.count - 1 ? viewModel.messages[index + 1] : nil
@@ -39,7 +37,7 @@ struct TimelineView: View {
 
                             if message.id == firstUnreadMessageID {
                                 newMessagesSeparator
-                                    .id("new-separator")
+                                    .id(ScrollTarget.newSeparator)
                             }
 
                             if shouldShowDaySeparator(current: message, previous: prev) {
@@ -73,35 +71,18 @@ struct TimelineView: View {
                         }
                     }
                     .padding(.vertical, 8)
+
+                    Color.clear
+                        .frame(height: 1)
+                        .id(ScrollTarget.bottom)
                 }
                 .defaultScrollAnchor(.bottom)
+                .opacity(hasSetupComplete ? 1 : 0)
                 .task {
-                    // Wait for messages to arrive, then calculate unread marker
-                    for await messages in AsyncStream<[NebMessage]> { cont in
-                        let task = Task { @MainActor in
-                            var prev = 0
-                            while true {
-                                let count = viewModel.messages.count
-                                if count > 0 && count == prev {
-                                    cont.yield(viewModel.messages)
-                                    cont.finish()
-                                    return
-                                }
-                                prev = count
-                                try? await Task.sleep(for: .milliseconds(200))
-                            }
-                        }
-                        cont.onTermination = { _ in task.cancel() }
-                    } {
-                        let unread = Int(viewModel.initialUnreadCount)
-                        if unread > 0 && unread < messages.count {
-                            firstUnreadMessageID = messages[messages.count - unread].id
-                            try? await Task.sleep(for: .milliseconds(100))
-                            proxy.scrollTo("new-separator", anchor: .top)
-                        }
-                        hasSetupComplete = true
-                        break
-                    }
+                    await scrollToInitialPosition(with: proxy)
+                }
+                .onChange(of: viewModel.messages.last?.id) { oldID, newID in
+                    scrollAfterLiveMessageIfNeeded(from: oldID, to: newID, with: proxy)
                 }
             }
 
@@ -134,8 +115,11 @@ struct TimelineView: View {
             }
         }
         .task {
-            await viewModel.markAsRead()
             await checkContactVerification()
+        }
+        .onDisappear {
+            scrollCorrectionTask?.cancel()
+            scrollCorrectionTask = nil
         }
         .onChange(of: showVerification) { _, isShowing in
             if !isShowing {
@@ -155,6 +139,79 @@ struct TimelineView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    @MainActor
+    private func scrollToInitialPosition(with proxy: ScrollViewProxy) async {
+        scrollCorrectionTask?.cancel()
+        scrollCorrectionTask = nil
+
+        let messages = await waitForInitialTimelineLoad()
+        guard !Task.isCancelled else { return }
+
+        firstUnreadMessageID = firstUnreadID(in: messages)
+
+        // Let SwiftUI materialize the bottom marker or NEW separator without delaying display.
+        await Task.yield()
+        guard !Task.isCancelled else { return }
+
+        if firstUnreadMessageID != nil {
+            proxy.scrollTo(ScrollTarget.newSeparator, anchor: .top)
+        } else {
+            proxy.scrollTo(ScrollTarget.bottom, anchor: .bottom)
+        }
+
+        hasSetupComplete = true
+        await viewModel.markAsRead()
+    }
+
+    @MainActor
+    private func waitForInitialTimelineLoad() async -> [NebMessage] {
+        for _ in 0..<80 {
+            guard !Task.isCancelled else { return viewModel.messages }
+
+            if viewModel.hasLoadedInitialTimeline {
+                return viewModel.messages
+            }
+
+            try? await Task.sleep(for: .milliseconds(25))
+        }
+
+        return viewModel.messages
+    }
+
+    private func firstUnreadID(in messages: [NebMessage]) -> String? {
+        let unread = Int(viewModel.initialUnreadCount)
+        guard unread > 0, unread < messages.count else { return nil }
+        let index = messages.count - unread
+        return messages[index].id
+    }
+
+    private func scrollAfterLiveMessageIfNeeded(from oldID: String?, to newID: String?, with proxy: ScrollViewProxy) {
+        guard hasSetupComplete, oldID != newID, let lastMessage = viewModel.messages.last else { return }
+
+        Task { await viewModel.markAsRead() }
+
+        guard lastMessage.isOutgoing else { return }
+        firstUnreadMessageID = nil
+        scrollCorrectionTask?.cancel()
+
+        withAnimation(.easeOut(duration: 0.2)) {
+            proxy.scrollTo(ScrollTarget.bottom, anchor: .bottom)
+        }
+
+        scrollCorrectionTask = Task { @MainActor in
+            await settleToBottom(with: proxy)
+        }
+    }
+
+    @MainActor
+    private func settleToBottom(with proxy: ScrollViewProxy) async {
+        for delay in [50, 150, 300] {
+            try? await Task.sleep(for: .milliseconds(delay))
+            guard !Task.isCancelled else { return }
+            proxy.scrollTo(ScrollTarget.bottom, anchor: .bottom)
+        }
     }
 
     private func checkContactVerification() async {
