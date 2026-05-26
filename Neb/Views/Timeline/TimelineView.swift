@@ -16,6 +16,12 @@ struct TimelineView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: 1)
+                            .onAppear {
+                                Task { await viewModel.loadMore() }
+                            }
+
                         if viewModel.isLoadingMore {
                             ProgressView()
                                 .padding()
