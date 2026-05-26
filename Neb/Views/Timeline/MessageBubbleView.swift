@@ -67,18 +67,10 @@ struct MessageBubbleView: View {
                 .padding(.top, 4)
             }
         }
-        .contextMenu {
-            Button(action: {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    showQuickReact = true
-                }
-            }) {
-                Label("React", systemImage: "face.smiling")
-            }
-            if message.isEditable {
-                Button(action: { onEdit?() }) {
-                    Label("Edit", systemImage: "pencil")
-                }
+        .overlay {
+            RightClickHandler {
+                showQuickReact = true
+                showContextMenu()
             }
         }
     }
@@ -86,6 +78,23 @@ struct MessageBubbleView: View {
     private func react(_ emoji: String) {
         RecentReactions.shared.recordReaction(emoji)
         onToggleReaction(emoji)
+    }
+
+    private func showContextMenu() {
+        let menu = NSMenu()
+        if message.isEditable {
+            let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+            editItem.image = NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)
+            menu.addItem(editItem)
+            editItem.target = ContextMenuTarget.shared
+            editItem.action = #selector(ContextMenuTarget.editMessage)
+            ContextMenuTarget.shared.onEdit = { [onEdit] in onEdit?() }
+        }
+        if !menu.items.isEmpty {
+            DispatchQueue.main.async {
+                menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+            }
+        }
     }
 
     // MARK: - Outgoing
@@ -316,6 +325,44 @@ extension String {
     var isEmojiOnly: Bool {
         guard !isEmpty && count <= 3 else { return false }
         return allSatisfy { $0.isEmoji }
+    }
+}
+
+private extension Character {
+    var isEmoji: Bool {
+        guard let scalar = unicodeScalars.first else { return false }
+        return scalar.properties.isEmoji && scalar.value > 0x23
+    }
+}
+
+private struct RightClickHandler: NSViewRepresentable {
+    let onRightClick: () -> Void
+
+    func makeNSView(context: Context) -> RightClickView {
+        let view = RightClickView()
+        view.onRightClick = onRightClick
+        return view
+    }
+
+    func updateNSView(_ nsView: RightClickView, context: Context) {
+        nsView.onRightClick = onRightClick
+    }
+
+    class RightClickView: NSView {
+        var onRightClick: (() -> Void)?
+
+        override func rightMouseDown(with event: NSEvent) {
+            onRightClick?()
+        }
+    }
+}
+
+private class ContextMenuTarget: NSObject {
+    static let shared = ContextMenuTarget()
+    var onEdit: (() -> Void)?
+
+    @objc func editMessage() {
+        onEdit?()
     }
 }
 
