@@ -107,10 +107,8 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
     }
 
     public func paginateBackwards(roomID: String, count: UInt) async throws {
-        guard let client = clientProvider() else { throw NebError.notLoggedIn }
-        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
-        let timeline = try await room.timeline()
-        let _ = try await timeline.paginateBackwards(numEvents: UInt16(min(count, UInt(UInt16.max))))
+        guard let handle = activeTimelines[roomID] else { throw NebError.roomNotFound(roomID) }
+        let _ = try await handle.timeline.paginateBackwards(numEvents: UInt16(min(count, UInt(UInt16.max))))
     }
 
     public func toggleReaction(roomID: String, eventID: String, emoji: String) async throws {
