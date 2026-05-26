@@ -131,10 +131,15 @@ public final class TimelineViewModel {
     private func startObserving() {
         timelineTask = Task { [weak self] in
             guard let self else { return }
+            var lastMessageID: String?
             for await messages in self.roomService.timelineStream(roomID: self.roomID) {
                 guard !Task.isCancelled else { break }
+                let newLastID = messages.last?.id
                 self.messages = messages
-                await self.markAsRead()
+                if newLastID != lastMessageID {
+                    lastMessageID = newLastID
+                    await self.markAsRead()
+                }
             }
         }
     }
