@@ -54,6 +54,7 @@ public final class KeychainController: Sendable {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecUseDataProtectionKeychain as String: true,
             kSecValueData as String: data
         ]
 
@@ -71,6 +72,7 @@ public final class KeychainController: Sendable {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+            kSecUseDataProtectionKeychain as String: true,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -92,7 +94,8 @@ public final class KeychainController: Sendable {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: account,
+            kSecUseDataProtectionKeychain as String: true
         ]
         SecItemDelete(query as CFDictionary)
     }
