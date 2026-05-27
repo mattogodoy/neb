@@ -18,19 +18,25 @@ Neb is a native macOS Matrix client. Named after the Nebuchadnezzar from The Mat
 ```
 Platform App (Neb/ or future iOS/)
   Views -- SwiftUI + platform-specific code (AppKit / UIKit)
+  ViewModels -- @Observable @MainActor, drive UI
   Utilities -- platform-specific text rendering (HTMLRenderer, MarkdownConverter)
 
 NebCore (Swift Package, platform-agnostic)
-  ViewModels -- @Observable @MainActor, drive UI
-  Database -- GRDB/SQLCipher, local persistence, search index
-  Services -- protocol definitions (seam between core and SDK)
-  Adapters -- implement protocols using MatrixRustSDK
+  NebClient -- single public API the app consumes
   Models -- NebRoom, NebMessage, NebUser, etc.
+  Database -- GRDB/SQLCipher, internal to NebCore, not exposed
+  SDK Observer -- listens to MatrixRustSDK, populates database, internal to NebCore
 ```
+
+- **NebClient** -- the API surface. Exposes methods and reactive streams for rooms, messages, typing, search, auth, crypto. The app (views and view models) only talks to NebClient. It reads from the database and delegates writes to the SDK.
+- **SDK Observer** -- an internal module that subscribes to the MatrixRustSDK's sync streams and writes incoming events to the database. Not exposed to the app.
+- **Database** -- GRDB/SQLCipher, stores rooms, messages, users, DM assignments, search index. Internal to NebCore. The API reads from it; the SDK observer writes to it.
+
+The app never sees the database, the SDK, or the observer. It sees NebClient and models.
 
 ## Rules
 
-- Views and ViewModels never import MatrixRustSDK. Enforced by a linter.
+- The app (views and view models) only imports NebCore and consumes NebClient. Never MatrixRustSDK. Enforced by a linter.
 - NebCore does not import AppKit or UIKit. Platform-specific code lives in the app target. Cross-platform guards (`#if canImport`) are acceptable for types like `NSImage`/`UIImage` in shared utilities like avatar caching.
 - One DM per user. Automatic assignment on first encounter, persists in the local database.
 - Credentials in the Keychain, never in plain files.
