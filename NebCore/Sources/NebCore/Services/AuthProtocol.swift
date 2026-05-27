@@ -7,7 +7,7 @@ public enum AuthState: Equatable, Sendable {
     case failed(String)
 }
 
-public protocol AuthServiceProtocol: Sendable {
+public protocol AuthProtocol: Sendable {
     func login(homeserverURL: String, username: String, password: String) async throws
     func restoreSession() async throws -> Bool
     func logout() async throws

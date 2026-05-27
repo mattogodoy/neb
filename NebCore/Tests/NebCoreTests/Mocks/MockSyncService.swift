@@ -1,7 +1,7 @@
 import Foundation
 @testable import NebCore
 
-final class MockSyncService: SyncServiceProtocol, @unchecked Sendable {
+final class MockSyncService: SyncProtocol, @unchecked Sendable {
     var rooms: [NebRoom] = []
     private var roomsContinuation: AsyncStream<[NebRoom]>.Continuation?
 

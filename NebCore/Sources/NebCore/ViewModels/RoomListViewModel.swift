@@ -25,18 +25,18 @@ public final class RoomListViewModel {
         return allRooms.filter { $0.name.lowercased().contains(query) }
     }
 
-    private let syncService: any SyncServiceProtocol
-    private let notificationService: (any NotificationServiceProtocol)?
+    private let syncService: any SyncProtocol
+    private let notificationService: (any NotificationProtocol)?
     private var previousUnreadCounts: [String: UInt] = [:]
     @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
-    private let typingService: (any TypingServiceProtocol)?
+    private let typingService: (any TypingProtocol)?
     private var roomTypingUsers: [String: [NebUser]] = [:]
     @ObservationIgnored nonisolated(unsafe) private var typingTasks: [String: Task<Void, Never>] = [:]
 
     public init(
-        syncService: any SyncServiceProtocol,
-        notificationService: (any NotificationServiceProtocol)? = nil,
-        typingService: (any TypingServiceProtocol)? = nil
+        syncService: any SyncProtocol,
+        notificationService: (any NotificationProtocol)? = nil,
+        typingService: (any TypingProtocol)? = nil
     ) {
         self.syncService = syncService
         self.notificationService = notificationService

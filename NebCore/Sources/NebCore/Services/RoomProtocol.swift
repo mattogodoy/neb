@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol RoomServiceProtocol: Sendable {
+public protocol RoomProtocol: Sendable {
     func timelineStream(roomID: String) -> AsyncStream<[NebMessage]>
     func sendMessage(roomID: String, body: String) async throws
     func sendReadReceipt(roomID: String, eventID: String) async throws

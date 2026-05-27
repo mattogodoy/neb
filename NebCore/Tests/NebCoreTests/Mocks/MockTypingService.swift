@@ -1,7 +1,7 @@
 import Foundation
 @testable import NebCore
 
-final class MockTypingService: TypingServiceProtocol, @unchecked Sendable {
+final class MockTypingService: TypingProtocol, @unchecked Sendable {
     var typingNotices: [(roomID: String, isTyping: Bool)] = []
     private var typingContinuations: [String: AsyncStream<[NebUser]>.Continuation] = [:]
 

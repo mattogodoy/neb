@@ -1,7 +1,7 @@
 import Foundation
 @testable import NebCore
 
-final class MockAuthService: AuthServiceProtocol, @unchecked Sendable {
+final class MockAuthService: AuthProtocol, @unchecked Sendable {
     var loginResult: Result<Void, Error> = .success(())
     var restoreResult: Bool = false
     var currentAuthState: AuthState = .loggedOut

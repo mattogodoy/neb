@@ -5,7 +5,7 @@ struct TimelineView: View {
     @Bindable var viewModel: TimelineViewModel
     let roomName: String
     var directUserID: String?
-    var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
+    var cryptoServiceProvider: (() -> any CryptoProtocol)?
     var isDM: Bool = false
     var homeserverURL: String = ""
     @State private var showVerification = false

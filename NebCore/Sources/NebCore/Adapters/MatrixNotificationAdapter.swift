@@ -7,7 +7,7 @@ import AppKit
 
 private let logger = Logger(subsystem: "com.neb.app", category: "Notification")
 
-public final class MatrixNotificationAdapter: NotificationServiceProtocol, @unchecked Sendable {
+public final class MatrixNotificationAdapter: NotificationProtocol, @unchecked Sendable {
     public init() {}
 
     public func requestPermission() async throws -> Bool {

@@ -4,7 +4,7 @@ import NebCore
 struct DeviceVerificationView: View {
     @Bindable var viewModel: VerificationViewModel
     var isAlreadyVerified: Bool = false
-    var cryptoService: (any CryptoServiceProtocol)?
+    var cryptoService: (any CryptoProtocol)?
     @Environment(\.dismiss) private var dismiss
 
     @State private var showRecoveryKeyInput = false

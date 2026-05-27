@@ -10,13 +10,13 @@ public final class LoginViewModel {
     public var errorMessage: String?
     public private(set) var authState: AuthState = .loggedOut
 
-    private let authService: any AuthServiceProtocol
+    private let authService: any AuthProtocol
 
     public var canLogin: Bool {
         !homeserver.isEmpty && !username.isEmpty && !password.isEmpty && !isLoading
     }
 
-    public init(authService: any AuthServiceProtocol) {
+    public init(authService: any AuthProtocol) {
         self.authService = authService
     }
 

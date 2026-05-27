@@ -62,9 +62,9 @@ final class AppState {
 
     var homeserverURL: String { "https://matrix.matto.io" }
 
-    func makeRoomService() -> any RoomServiceProtocol { roomAdapter }
-    func makeCryptoService() -> any CryptoServiceProtocol { cryptoAdapter }
-    func makeTypingService() -> any TypingServiceProtocol { typingAdapter }
+    func makeRoomService() -> any RoomProtocol { roomAdapter }
+    func makeCryptoService() -> any CryptoProtocol { cryptoAdapter }
+    func makeTypingService() -> any TypingProtocol { typingAdapter }
 
     var currentUserID: String? {
         try? authAdapter.getClient()?.userId()

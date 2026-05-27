@@ -5,7 +5,7 @@ import os
 private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Typing")
 
-public final class MatrixTypingAdapter: TypingServiceProtocol, @unchecked Sendable {
+public final class MatrixTypingAdapter: TypingProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private let roomListServiceProvider: () -> RoomListService?
 

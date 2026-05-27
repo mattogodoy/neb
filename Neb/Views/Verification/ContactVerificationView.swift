@@ -5,7 +5,7 @@ struct ContactVerificationView: View {
     @Bindable var viewModel: VerificationViewModel
     let userID: String
     let displayName: String
-    var cryptoService: (any CryptoServiceProtocol)?
+    var cryptoService: (any CryptoProtocol)?
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirming = false
     @State private var isAlreadyVerified = false

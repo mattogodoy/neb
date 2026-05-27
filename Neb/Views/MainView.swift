@@ -3,9 +3,9 @@ import NebCore
 
 struct MainView: View {
     @Bindable var roomListViewModel: RoomListViewModel
-    let roomServiceProvider: () -> any RoomServiceProtocol
-    var cryptoServiceProvider: (() -> any CryptoServiceProtocol)?
-    var typingServiceProvider: (() -> any TypingServiceProtocol)?
+    let roomServiceProvider: () -> any RoomProtocol
+    var cryptoServiceProvider: (() -> any CryptoProtocol)?
+    var typingServiceProvider: (() -> any TypingProtocol)?
     var currentUserID: String?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
     var homeserverURL: String = ""

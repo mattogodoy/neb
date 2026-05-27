@@ -15,8 +15,8 @@ public final class TimelineViewModel {
     public let initialUnreadCount: UInt
 
     private let roomID: String
-    private let roomService: any RoomServiceProtocol
-    private let typingService: (any TypingServiceProtocol)?
+    private let roomService: any RoomProtocol
+    private let typingService: (any TypingProtocol)?
     private let currentUserID: String?
     @ObservationIgnored nonisolated(unsafe) private var timelineTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingTask: Task<Void, Never>?
@@ -25,8 +25,8 @@ public final class TimelineViewModel {
 
     public init(
         roomID: String,
-        roomService: any RoomServiceProtocol,
-        typingService: (any TypingServiceProtocol)? = nil,
+        roomService: any RoomProtocol,
+        typingService: (any TypingProtocol)? = nil,
         currentUserID: String? = nil,
         initialUnreadCount: UInt = 0
     ) {

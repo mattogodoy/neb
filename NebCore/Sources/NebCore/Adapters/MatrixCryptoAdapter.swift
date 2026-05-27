@@ -4,7 +4,7 @@ import os
 
 private let logger = Logger(subsystem: "com.neb.app", category: "Crypto")
 
-public final class MatrixCryptoAdapter: CryptoServiceProtocol, @unchecked Sendable {
+public final class MatrixCryptoAdapter: CryptoProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private var controller: SessionVerificationController?
     private var delegate: VerificationDelegate?

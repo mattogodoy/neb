@@ -11,9 +11,9 @@ public final class NewDMViewModel {
         isValidMatrixID(userID) && !isCreating
     }
 
-    private let roomService: any RoomServiceProtocol
+    private let roomService: any RoomProtocol
 
-    public init(roomService: any RoomServiceProtocol) {
+    public init(roomService: any RoomProtocol) {
         self.roomService = roomService
     }
 

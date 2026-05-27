@@ -5,7 +5,7 @@ import os
 private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Sync")
 
-public final class MatrixSyncAdapter: SyncServiceProtocol, @unchecked Sendable {
+public final class MatrixSyncAdapter: SyncProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private var syncService: MatrixRustSDK.SyncService?
     public private(set) var roomListService: RoomListService?

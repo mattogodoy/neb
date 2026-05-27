@@ -5,7 +5,7 @@ import os
 private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Room")
 
-public final class Room: RoomServiceProtocol, @unchecked Sendable {
+public final class Room: RoomProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private let roomListServiceProvider: () -> RoomListService?
     private var activeTimelines: [String: TimelineHandle] = [:]

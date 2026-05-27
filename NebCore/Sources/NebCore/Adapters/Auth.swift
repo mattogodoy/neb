@@ -4,7 +4,7 @@ import os
 
 private let logger = Logger(subsystem: "com.neb.app", category: "Auth")
 
-public final class Auth: AuthServiceProtocol, @unchecked Sendable {
+public final class Auth: AuthProtocol, @unchecked Sendable {
     private var client: Client?
     private var _authState: AuthState = .loggedOut
     private var continuation: AsyncStream<AuthState>.Continuation?

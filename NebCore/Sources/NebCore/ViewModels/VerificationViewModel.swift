@@ -6,13 +6,13 @@ public final class VerificationViewModel {
     public private(set) var state: VerificationState = .idle
     public var errorMessage: String?
 
-    private let cryptoService: any CryptoServiceProtocol
+    private let cryptoService: any CryptoProtocol
     @ObservationIgnored nonisolated(unsafe) private var stateTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var timeoutTask: Task<Void, Never>?
 
     private static let timeoutSeconds: UInt64 = 60
 
-    public init(cryptoService: any CryptoServiceProtocol) {
+    public init(cryptoService: any CryptoProtocol) {
         self.cryptoService = cryptoService
         startObserving()
     }

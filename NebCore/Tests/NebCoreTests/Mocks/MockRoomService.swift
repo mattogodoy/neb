@@ -1,7 +1,7 @@
 import Foundation
 @testable import NebCore
 
-final class MockRoomService: RoomServiceProtocol, @unchecked Sendable {
+final class MockRoomService: RoomProtocol, @unchecked Sendable {
     var messages: [String: [NebMessage]] = [:]
     var sentMessages: [(roomID: String, body: String)] = []
     var readReceipts: [(roomID: String, eventID: String)] = []

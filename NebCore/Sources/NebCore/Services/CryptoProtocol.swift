@@ -6,7 +6,7 @@ public enum DeviceVerificationStatus: Equatable, Sendable {
     case unverified
 }
 
-public protocol CryptoServiceProtocol: Sendable {
+public protocol CryptoProtocol: Sendable {
     func startDeviceVerification() async throws
     func startUserVerification(userID: String) async throws
     func acceptVerification() async throws

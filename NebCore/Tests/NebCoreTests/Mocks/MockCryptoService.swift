@@ -1,7 +1,7 @@
 import Foundation
 @testable import NebCore
 
-final class MockCryptoService: CryptoServiceProtocol, @unchecked Sendable {
+final class MockCryptoService: CryptoProtocol, @unchecked Sendable {
     var currentState: VerificationState = .idle
     private var stateContinuation: AsyncStream<VerificationState>.Continuation?
 
