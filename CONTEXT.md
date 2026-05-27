@@ -22,21 +22,23 @@ Platform App (Neb/ or future iOS/)
   Utilities -- platform-specific text rendering (HTMLRenderer, MarkdownConverter)
 
 NebCore (Swift Package, platform-agnostic)
-  NebClient -- single public API the app consumes
+  Services -- protocol definitions (seam between app and core)
+  Adapters -- implement protocols, read/write database, delegate to SDK
   Models -- NebRoom, NebMessage, NebUser, etc.
-  Database -- GRDB/SQLCipher, internal to NebCore, not exposed
-  SDK Observer -- listens to MatrixRustSDK, populates database, internal to NebCore
+  Database -- GRDB/SQLCipher, internal to adapters, not exposed
+  SDK Observer -- listens to MatrixRustSDK, populates database, internal to adapters
 ```
 
-- **NebClient** -- the API surface. Exposes methods and reactive streams for rooms, messages, typing, search, auth, crypto. The app (views and view models) only talks to NebClient. It reads from the database and delegates writes to the SDK.
-- **SDK Observer** -- an internal module that subscribes to the MatrixRustSDK's sync streams and writes incoming events to the database. Not exposed to the app.
-- **Database** -- GRDB/SQLCipher, stores rooms, messages, users, DM assignments, search index. Internal to NebCore. The API reads from it; the SDK observer writes to it.
+- **Services (Protocols)** -- the public API. View models receive protocols through dependency injection. Each protocol covers a domain: rooms, timeline, auth, crypto, typing, notifications.
+- **Adapters** -- implement the protocols. Read from the database to serve view models. Delegate actions (send, edit, react) to the SDK. The database and SDK are internal details.
+- **SDK Observer** -- internal module that subscribes to MatrixRustSDK sync streams and writes incoming events to the database. Not exposed to the app.
+- **Database** -- GRDB/SQLCipher, stores rooms, messages, users, DM assignments, search index. Internal to adapters. Not exposed to the app.
 
-The app never sees the database, the SDK, or the observer. It sees NebClient and models.
+The app never sees the database, the SDK, or the observer. It sees protocols and models.
 
 ## Rules
 
-- The app (views and view models) only imports NebCore and consumes NebClient. Never MatrixRustSDK. Enforced by a linter.
+- Views and ViewModels never import MatrixRustSDK. They consume protocols from NebCore. Enforced by a linter.
 - NebCore does not import AppKit or UIKit. Platform-specific code lives in the app target. Cross-platform guards (`#if canImport`) are acceptable for types like `NSImage`/`UIImage` in shared utilities like avatar caching.
 - One DM per user. Automatic assignment on first encounter, persists in the local database.
 - Credentials in the Keychain, never in plain files.
