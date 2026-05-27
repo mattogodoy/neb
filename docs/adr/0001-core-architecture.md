@@ -1,67 +1,68 @@
-# ADR-0001: Core Architecture -- Offline-First with Local Persistence
+# ADR-0001: Core Architecture -- SDK as Source of Truth with Search Index
 
 ## Status
 
-Accepted
+Accepted (revised -- originally proposed full local database, reduced to search index only)
 
 ## Context
 
-Neb currently operates online-only. The SDK streams events, view models consume them, views render. If the SDK doesn't sync, the app shows nothing. There is no local search, no offline access, no message cache the app controls.
+Neb uses the matrix-rust-sdk for protocol, crypto, and sync. The SDK has its own internal SQLite stores (state, crypto, event cache, media) that persist data between launches. The SDK's data is encrypted at the application level (per-value encryption) and is not directly queryable.
 
-The SDK (matrix-rust-sdk) handles protocol, crypto, and sync. It has an internal SQLite store, but it's opaque -- the app can't query it. Features like local search, instant launch with cached data, and offline composition require a persistence layer the app owns.
+The question was whether to build a full local persistence layer on top of the SDK, or lean on the SDK's existing storage.
 
-Additionally, credentials are stored as plain JSON on disk (`session.json`), and the SDK's crypto store has no passphrase -- it's unencrypted at rest.
+After investigating:
+- The SDK already stores room metadata, events, members, profiles, read receipts, and a send queue.
+- The SDK loads from cache on startup -- session restore is already fast.
+- Element X (same SDK) does not maintain a separate database.
+- The SDK's database is tightly coupled to its internals -- duplicating it would mean maintaining two storage systems.
 
 ## Decisions
 
-### 1. Local Database with GRDB and SQLCipher
+### 1. SDK is the Source of Truth
 
-Add a local SQLite database managed by GRDB. Encrypt it with SQLCipher. GRDB is a Swift package that works on both macOS and iOS, supporting the cross-platform goal.
+The SDK's internal database is the canonical data store. Neb does not duplicate room metadata, events, members, or profiles in a separate database. The app reads from the SDK's API (`Room.roomInfo()`, `Room.latestEvent()`, `Room.timeline()`, etc.), which is backed by the SDK's cache.
 
-The database stores:
-- Room metadata (name, avatar, last message, unread count, DM assignment)
-- Timeline events (messages, state events, media references)
-- User profiles (display name, avatar URL)
-- DM assignments (which room is the designated DM per user)
-- Search index (full-text search over message content)
+### 2. Search Index with GRDB and SQLCipher
 
-The database is a cache -- the Matrix server (via the SDK) is the source of truth. If the database is lost, it rebuilds from sync.
+Add a lightweight FTS5 (full-text search) index in a separate SQLite database managed by GRDB. Encrypted with SQLCipher using the passphrase from Keychain.
 
-### 2. Credentials in the Keychain
+The index stores only what's needed for search:
+- `eventID`, `roomID`, `senderID`, `body`, `timestamp`
+- FTS5 index on `body`
 
-Move session credentials (access token, user ID, device ID, homeserver URL) from `session.json` to the platform Keychain. Following Element X's pattern: store a `RestorationToken` struct (JSON-encoded) in the Keychain, keyed by user ID.
+The index is populated as a side effect of the timeline stream -- as messages flow through the adapter, their text is indexed. The index is not a replacement for the SDK's storage. If lost, it rebuilds by paginating backwards through rooms.
 
-Generate a random passphrase on first login for:
-- The SDK's crypto store encryption (passed to `ClientBuilder`)
-- The GRDB/SQLCipher database encryption key
+Search results return event IDs, which the app uses to jump to context via the SDK's timeline API.
 
-Both passphrases stored in the Keychain alongside the session.
+### 3. DM Assignments in UserDefaults
 
-### 3. One DM Per User
+DM assignment (which room is "the" DM per user) is a small key-value mapping. Stored in UserDefaults as a `[String: String]` dictionary (`directUserID → roomID`). No database needed for this.
 
-The SDK can report multiple rooms with `isDirect=true` for the same user (created by other clients). Neb enforces a single DM per user:
+### 4. Credentials in the Keychain (implemented)
 
-- On first encounter, the room with the most recent `lastMessageTimestamp` is automatically designated as the DM.
-- The assignment is persisted in the local database.
-- Once assigned, it sticks -- no re-evaluation.
-- Non-designated rooms with the same user appear under Groups.
+Session credentials moved from `session.json` to the macOS/iOS Keychain. A random passphrase for the SDK's crypto store is generated on login and stored in the Keychain. See the Auth rewrite for implementation details.
 
-### 4. NebCore Stays Platform-Agnostic
+### 5. NebCore Stays Platform-Agnostic (implemented)
 
-NebCore (the Swift Package) must not import AppKit or UIKit. Platform-specific utilities (HTMLRenderer, MarkdownConverter, AttributedStringFormatter) live in the app target.
+AppKit-dependent utilities moved to the app target. NebCore imports only Foundation, Security, and MatrixRustSDK.
 
-Cross-platform guards (`#if canImport(AppKit)`) are acceptable for shared types like image caching (`NSImage`/`UIImage` aliased as `PlatformImage`).
+### 6. Linter for SDK Import Boundary
 
-### 5. Linter for SDK Import Boundary
+Add a build phase or linter rule that prevents `import MatrixRustSDK` outside of `NebCore/Sources/NebCore/Adapters/`.
 
-Add a build phase or linter rule that prevents `import MatrixRustSDK` outside of `NebCore/Sources/NebCore/Adapters/`. This enforces the adapter seam with multiple developers.
+## What We Don't Build
+
+- **Full message cache** -- the SDK already caches events in its encrypted SQLite store.
+- **Room metadata database** -- the SDK provides `Room.roomInfo()` and `Room.latestEvent()` from cache.
+- **Offline send queue** -- the SDK has `send_queue_events` built in.
+- **Media cache** -- the SDK has `matrix-sdk-media.sqlite3`.
 
 ## Consequences
 
-- Launch is faster -- the app renders from local data while sync fills in updates.
-- Search works locally and instantly.
-- DM deduplication is handled at the data layer, not the view layer.
-- Credentials are protected by the OS Keychain instead of plain files.
-- The database adds complexity -- schema migrations, sync-to-database merging, cache invalidation.
-- GRDB becomes a dependency of NebCore (but it's lightweight and cross-platform).
-- Existing `session.json` persistence in `MatrixAuthAdapter` needs to be replaced with Keychain operations.
+- Simpler architecture -- one source of truth (the SDK), one small index for search.
+- No schema migration complexity for event/room/member storage.
+- GRDB is only needed for the search index (lightweight dependency).
+- Search is local and instant once indexed.
+- If the SDK changes its internal storage format, Neb is unaffected (we don't read the SDK's database).
+- DM assignments are simple and portable via UserDefaults.
+- Credentials are protected by the OS Keychain.
