@@ -9,7 +9,7 @@ private let logger = Logger(subsystem: "com.neb.app", category: "AppState")
 final class AppState {
     let authAdapter: Auth
     let syncAdapter: MatrixSyncAdapter
-    let roomAdapter: MatrixRoomAdapter
+    let roomAdapter: Room
     let cryptoAdapter: MatrixCryptoAdapter
     let notificationAdapter: MatrixNotificationAdapter
     let typingAdapter: MatrixTypingAdapter
@@ -21,7 +21,7 @@ final class AppState {
     init() {
         let auth = Auth()
         let sync = MatrixSyncAdapter(clientProvider: { auth.getClient() })
-        let room = MatrixRoomAdapter(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
+        let room = Room(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
         let crypto = MatrixCryptoAdapter(clientProvider: { auth.getClient() })
         let notification = MatrixNotificationAdapter()
         let typing = MatrixTypingAdapter(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })

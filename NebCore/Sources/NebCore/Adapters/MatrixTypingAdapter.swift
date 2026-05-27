@@ -2,6 +2,7 @@ import Foundation
 import MatrixRustSDK
 import os
 
+private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Typing")
 
 public final class MatrixTypingAdapter: TypingServiceProtocol, @unchecked Sendable {
@@ -38,10 +39,10 @@ public final class MatrixTypingAdapter: TypingServiceProtocol, @unchecked Sendab
 
 private final class NebTypingListener: TypingNotificationsListener, @unchecked Sendable {
     private let roomID: String
-    private let room: Room
+    private let room: SDKRoom
     private let continuation: AsyncStream<[NebUser]>.Continuation
 
-    init(roomID: String, room: Room, continuation: AsyncStream<[NebUser]>.Continuation) {
+    init(roomID: String, room: SDKRoom, continuation: AsyncStream<[NebUser]>.Continuation) {
         self.roomID = roomID
         self.room = room
         self.continuation = continuation

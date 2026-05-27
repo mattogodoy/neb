@@ -2,9 +2,10 @@ import Foundation
 import MatrixRustSDK
 import os
 
+private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Room")
 
-public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
+public final class Room: RoomServiceProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private let roomListServiceProvider: () -> RoomListService?
     private var activeTimelines: [String: TimelineHandle] = [:]
@@ -130,7 +131,7 @@ public final class MatrixRoomAdapter: RoomServiceProtocol, @unchecked Sendable {
 }
 
 private struct TimelineHandle {
-    let room: Room
+    let room: SDKRoom
     let timeline: Timeline
     let listener: NebTimelineListener
     let listenerHandle: TaskHandle
