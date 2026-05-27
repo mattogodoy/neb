@@ -33,13 +33,13 @@ NebCore (Swift Package, platform-agnostic)
 - **Adapters** -- implement the protocols. Read from the SDK's API (which is backed by the SDK's internal cache). Delegate actions (send, edit, react) to the SDK.
 - **Search Index** -- GRDB/SQLCipher, indexes message bodies for local full-text search. Populated as a side effect of the timeline stream. Not a duplicate of the SDK's data.
 
-The SDK is the source of truth for all Matrix data. The search index is the only separate persistence Neb maintains (alongside DM assignments in UserDefaults and credentials in the Keychain).
+The SDK is the source of truth for all Matrix data. The local database (search index + DM assignments) and the Keychain (credentials) are the only separate persistence Neb maintains.
 
 ## Rules
 
 - Views and ViewModels never import MatrixRustSDK. They consume protocols from NebCore. Enforced by a linter.
 - NebCore does not import AppKit or UIKit. Platform-specific code lives in the app target. Cross-platform guards (`#if canImport`) are acceptable for types like `NSImage`/`UIImage` in shared utilities like avatar caching.
-- One DM per user. Automatic assignment on first encounter, persists in UserDefaults.
+- One DM per user. Automatic assignment on first encounter, persists in the local database.
 - Credentials in the Keychain, never in plain files.
 - The search index is encrypted with SQLCipher. The encryption key is a random passphrase stored in the Keychain.
 - The Rust SDK is the source of truth for protocol, crypto, and sync. The search index can be rebuilt by paginating through room timelines.

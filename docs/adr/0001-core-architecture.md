@@ -34,9 +34,9 @@ The index is populated as a side effect of the timeline stream -- as messages fl
 
 Search results return event IDs, which the app uses to jump to context via the SDK's timeline API.
 
-### 3. DM Assignments in UserDefaults
+### 3. DM Assignments in the Local Database
 
-DM assignment (which room is "the" DM per user) is a small key-value mapping. Stored in UserDefaults as a `[String: String]` dictionary (`directUserID → roomID`). No database needed for this.
+DM assignment (which room is "the" DM per user) is stored in the same GRDB/SQLCipher database as the search index. A simple table mapping `directUserID → roomID`. Shares the same encryption and lifecycle as the search index.
 
 ### 4. Credentials in the Keychain (implemented)
 
