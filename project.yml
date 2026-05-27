@@ -23,13 +23,13 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.neb.app
         PRODUCT_NAME: Neb
         MACOSX_DEPLOYMENT_TARGET: "26.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 868X3B2PN5
         OTHER_LDFLAGS: ["-Wl,-w"]
         SWIFT_VERSION: "5.10"
         CODE_SIGN_ENTITLEMENTS: Neb/Neb.entitlements
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.social-networking
-    entitlements:
-      path: Neb/Neb.entitlements
 
   NebTests:
     type: bundle.unit-test
