@@ -33,3 +33,18 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+
+  NebTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - NebTests
+    dependencies:
+      - target: Neb
+      - package: NebCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.neb.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Neb.app/Contents/MacOS/Neb"
+        BUNDLE_LOADER: "$(TEST_HOST)"

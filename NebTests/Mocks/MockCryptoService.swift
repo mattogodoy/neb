@@ -1,5 +1,5 @@
 import Foundation
-@testable import NebCore
+import NebCore
 
 final class MockCryptoService: CryptoProtocol, @unchecked Sendable {
     var currentState: VerificationState = .idle

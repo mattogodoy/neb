@@ -1,6 +1,7 @@
 import Foundation
 import Testing
-@testable import NebCore
+@testable import Neb
+import NebCore
 
 private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> NebMessage {
     NebMessage(

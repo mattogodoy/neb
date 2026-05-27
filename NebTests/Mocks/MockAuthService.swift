@@ -1,5 +1,5 @@
 import Foundation
-@testable import NebCore
+import NebCore
 
 final class MockSession: AuthProtocol, SessionProtocol, @unchecked Sendable {
     var loginResult: Result<Void, Error> = .success(())

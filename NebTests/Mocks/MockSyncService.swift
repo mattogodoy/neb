@@ -1,5 +1,5 @@
 import Foundation
-@testable import NebCore
+import NebCore
 
 final class MockSyncService: SyncProtocol, @unchecked Sendable {
     var rooms: [NebRoom] = []

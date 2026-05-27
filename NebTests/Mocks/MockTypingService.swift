@@ -1,5 +1,5 @@
 import Foundation
-@testable import NebCore
+import NebCore
 
 final class MockTypingService: TypingProtocol, @unchecked Sendable {
     var typingNotices: [(roomID: String, isTyping: Bool)] = []

@@ -1,6 +1,7 @@
 import Foundation
 import Testing
-@testable import NebCore
+@testable import Neb
+import NebCore
 
 @Test func verificationInitialStateIsIdle() async {
     let crypto = MockCryptoService()
