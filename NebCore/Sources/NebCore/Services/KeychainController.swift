@@ -46,6 +46,7 @@ public final class KeychainController: Sendable {
 
     private func save(data: Data, account: String) throws {
         // Delete existing item first to avoid duplicates
+        // Delete existing item first to avoid duplicates
         delete(account: account)
 
         let query: [String: Any] = [
@@ -58,10 +59,12 @@ public final class KeychainController: Sendable {
 
         let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else {
-            logger.error("Keychain save failed for \(account): \(status)")
+            logger.error("Keychain save failed for \(account) service=\(self.service): \(status)")
             throw KeychainError.saveFailed(status)
         }
     }
+
+
 
     private func load(account: String) -> Data? {
         let query: [String: Any] = [
