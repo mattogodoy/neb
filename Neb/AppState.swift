@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.neb.app", category: "AppState")
 @MainActor
 @Observable
 final class AppState {
-    let authAdapter: MatrixAuthAdapter
+    let authAdapter: Auth
     let syncAdapter: MatrixSyncAdapter
     let roomAdapter: MatrixRoomAdapter
     let cryptoAdapter: MatrixCryptoAdapter
@@ -19,7 +19,7 @@ final class AppState {
     private(set) var deviceVerificationStatus: DeviceVerificationStatus = .unknown
 
     init() {
-        let auth = MatrixAuthAdapter()
+        let auth = Auth()
         let sync = MatrixSyncAdapter(clientProvider: { auth.getClient() })
         let room = MatrixRoomAdapter(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
         let crypto = MatrixCryptoAdapter(clientProvider: { auth.getClient() })
