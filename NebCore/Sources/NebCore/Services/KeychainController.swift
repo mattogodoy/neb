@@ -45,31 +45,21 @@ public final class KeychainController: Sendable {
     // MARK: - Private
 
     private func save(data: Data, account: String) throws {
+        // Delete existing item first to avoid duplicates
+        delete(account: account)
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-
-        let attributes: [String: Any] = [
+            kSecAttrAccount as String: account,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
             kSecValueData as String: data
         ]
 
-        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if updateStatus == errSecItemNotFound {
-            // Item doesn't exist — add it
-            var addQuery = query
-            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            addQuery[kSecValueData as String] = data
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
-                logger.error("Keychain save failed for \(account): \(addStatus)")
-                throw KeychainError.saveFailed(addStatus)
-            }
-        } else if updateStatus != errSecSuccess {
-            logger.error("Keychain update failed for \(account): \(updateStatus)")
-            throw KeychainError.saveFailed(updateStatus)
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            logger.error("Keychain save failed for \(account): \(status)")
+            throw KeychainError.saveFailed(status)
         }
     }
 
