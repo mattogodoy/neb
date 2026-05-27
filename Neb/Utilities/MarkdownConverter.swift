@@ -1,9 +1,9 @@
 import AppKit
 import Foundation
 
-public enum MarkdownConverter {
+enum MarkdownConverter {
     /// Converts an NSAttributedString to markdown.
-    public static func convert(_ attributedString: NSAttributedString) -> String {
+    static func convert(_ attributedString: NSAttributedString) -> String {
         var result = ""
         let fullRange = NSRange(location: 0, length: attributedString.length)
 

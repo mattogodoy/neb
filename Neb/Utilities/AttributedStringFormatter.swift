@@ -1,10 +1,10 @@
 import AppKit
 import Foundation
 
-public enum AttributedStringFormatter {
+enum AttributedStringFormatter {
     // MARK: - Toggle traits
 
-    public static func toggleTrait(_ trait: NSFontDescriptor.SymbolicTraits, in storage: NSTextStorage, range: NSRange) {
+    static func toggleTrait(_ trait: NSFontDescriptor.SymbolicTraits, in storage: NSTextStorage, range: NSRange) {
         var hasAll = true
         storage.enumerateAttribute(.font, in: range) { value, _, _ in
             guard let font = value as? NSFont else { hasAll = false; return }
@@ -27,7 +27,7 @@ public enum AttributedStringFormatter {
 
     // MARK: - Toggle attributes
 
-    public static func toggleAttribute(_ key: NSAttributedString.Key, value: Any, in storage: NSTextStorage, range: NSRange) {
+    static func toggleAttribute(_ key: NSAttributedString.Key, value: Any, in storage: NSTextStorage, range: NSRange) {
         var hasAll = true
         storage.enumerateAttribute(key, in: range) { existing, _, _ in
             if existing == nil { hasAll = false }
@@ -42,14 +42,14 @@ public enum AttributedStringFormatter {
 
     // MARK: - Inline code
 
-    public static func applyInlineCode(in storage: NSTextStorage, range: NSRange) {
+    static func applyInlineCode(in storage: NSTextStorage, range: NSRange) {
         let monoFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         storage.addAttribute(.font, value: monoFont, range: range)
     }
 
     // MARK: - Block types
 
-    public static func applyBlockType(_ type: String, in storage: NSTextStorage, range: NSRange) {
+    static func applyBlockType(_ type: String, in storage: NSTextStorage, range: NSRange) {
         let lineRange = (storage.string as NSString).lineRange(for: range)
         storage.addAttribute(.init("NebBlockType"), value: type, range: lineRange)
 
@@ -61,25 +61,25 @@ public enum AttributedStringFormatter {
 
     // MARK: - State detection
 
-    public static func isBold(in attrs: [NSAttributedString.Key: Any]) -> Bool {
+    static func isBold(in attrs: [NSAttributedString.Key: Any]) -> Bool {
         guard let font = attrs[.font] as? NSFont else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.bold)
     }
 
-    public static func isItalic(in attrs: [NSAttributedString.Key: Any]) -> Bool {
+    static func isItalic(in attrs: [NSAttributedString.Key: Any]) -> Bool {
         guard let font = attrs[.font] as? NSFont else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.italic)
     }
 
-    public static func isUnderline(in attrs: [NSAttributedString.Key: Any]) -> Bool {
+    static func isUnderline(in attrs: [NSAttributedString.Key: Any]) -> Bool {
         (attrs[.underlineStyle] as? Int).map { $0 != 0 } ?? false
     }
 
-    public static func isStrikethrough(in attrs: [NSAttributedString.Key: Any]) -> Bool {
+    static func isStrikethrough(in attrs: [NSAttributedString.Key: Any]) -> Bool {
         (attrs[.strikethroughStyle] as? Int).map { $0 != 0 } ?? false
     }
 
-    public static func isMonospace(in attrs: [NSAttributedString.Key: Any]) -> Bool {
+    static func isMonospace(in attrs: [NSAttributedString.Key: Any]) -> Bool {
         guard let font = attrs[.font] as? NSFont else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.monoSpace)
     }
