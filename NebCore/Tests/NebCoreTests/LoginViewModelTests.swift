@@ -3,8 +3,8 @@ import Testing
 @testable import NebCore
 
 @Test func initialState() async {
-    let mock = MockAuthService()
-    let vm = await LoginViewModel(authService: mock)
+    let mock = MockSession()
+    let vm = await LoginViewModel(auth: mock, session: mock)
     let state = await vm.authState
     #expect(state == .loggedOut)
     let loading = await vm.isLoading
@@ -12,8 +12,8 @@ import Testing
 }
 
 @Test func loginSuccess() async throws {
-    let mock = MockAuthService()
-    let vm = await LoginViewModel(authService: mock)
+    let mock = MockSession()
+    let vm = await LoginViewModel(auth: mock, session: mock)
 
     await vm.setHomeserver("https://matrix.example.com")
     await vm.setUsername("alice")
@@ -25,9 +25,9 @@ import Testing
 }
 
 @Test func loginFailure() async throws {
-    let mock = MockAuthService()
+    let mock = MockSession()
     mock.loginResult = .failure(NSError(domain: "test", code: 401, userInfo: [NSLocalizedDescriptionKey: "Invalid credentials"]))
-    let vm = await LoginViewModel(authService: mock)
+    let vm = await LoginViewModel(auth: mock, session: mock)
 
     await vm.setHomeserver("https://matrix.example.com")
     await vm.setUsername("alice")
@@ -40,8 +40,8 @@ import Testing
 }
 
 @Test func loginDisabledWithEmptyFields() async {
-    let mock = MockAuthService()
-    let vm = await LoginViewModel(authService: mock)
+    let mock = MockSession()
+    let vm = await LoginViewModel(auth: mock, session: mock)
     let canLogin = await vm.canLogin
     #expect(!canLogin)
 
@@ -56,9 +56,9 @@ import Testing
 }
 
 @Test func restoreSessionSuccess() async throws {
-    let mock = MockAuthService()
+    let mock = MockSession()
     mock.restoreResult = true
-    let vm = await LoginViewModel(authService: mock)
+    let vm = await LoginViewModel(auth: mock, session: mock)
     let restored = await vm.tryRestoreSession()
     #expect(restored)
 }

@@ -2,12 +2,13 @@ import Foundation
 import MatrixRustSDK
 import os
 
-private let logger = Logger(subsystem: "com.neb.app", category: "Auth")
+private let logger = Logger(subsystem: "com.neb.app", category: "Session")
 
-public final class Auth: AuthProtocol, @unchecked Sendable {
+public final class Session: AuthProtocol, SessionProtocol, @unchecked Sendable {
     private var client: Client?
-    private var _authState: AuthState = .loggedOut
+    private var _state: AuthState = .loggedOut
     private var continuation: AsyncStream<AuthState>.Continuation?
+    private var _sessionData: NebSession?
 
     private let sessionDirectory: URL
     private let keychain: KeychainController
@@ -26,9 +27,87 @@ public final class Auth: AuthProtocol, @unchecked Sendable {
         }
     }
 
-    public var authState: AuthState {
-        get async { _authState }
+    // MARK: - SessionProtocol
+
+    public var userID: String? {
+        get async { _sessionData?.userId }
     }
+
+    public var homeserverURL: String? {
+        get async { _sessionData?.homeserverUrl }
+    }
+
+    public var deviceID: String? {
+        get async { _sessionData?.deviceId }
+    }
+
+    public var state: AuthState {
+        get async { _state }
+    }
+
+    public func stateStream() -> AsyncStream<AuthState> {
+        AsyncStream { continuation in
+            self.continuation = continuation
+            continuation.yield(self._state)
+        }
+    }
+
+    public func restore() async throws -> Bool {
+        guard let lastUserID = UserDefaults.standard.string(forKey: "com.neb.lastUserID"),
+              let session = keychain.loadSession(for: lastUserID),
+              let passphrase = keychain.loadPassphrase(for: lastUserID) else {
+            logger.info("No session to restore from Keychain")
+            return false
+        }
+
+        logger.info("Restoring session for \(session.userId) on \(session.homeserverUrl)")
+
+        let slidingSyncVersion: SlidingSyncVersion = session.slidingSyncVersion == "native" ? .native : .none
+
+        let sdkSession = MatrixRustSDK.Session(
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken,
+            userId: session.userId,
+            deviceId: session.deviceId,
+            homeserverUrl: session.homeserverUrl,
+            oauthData: session.oauthData,
+            slidingSyncVersion: slidingSyncVersion
+        )
+
+        let dataPath = sessionDirectory.appendingPathComponent("data").path
+        let cachePath = sessionDirectory.appendingPathComponent("cache").path
+
+        do {
+            let storeConfig = SqliteStoreBuilder(dataPath: dataPath, cachePath: cachePath)
+                .passphrase(passphrase: passphrase)
+
+            let t = ContinuousClock.now
+            let client = try await ClientBuilder()
+                .serverNameOrHomeserverUrl(serverNameOrUrl: session.homeserverUrl)
+                .sqliteStore(config: storeConfig)
+                .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
+                .build()
+            logger.info("Restore: build() took \(ContinuousClock.now - t)")
+
+            let t2 = ContinuousClock.now
+            try await client.restoreSession(session: sdkSession)
+            logger.info("Restore: restoreSession() took \(ContinuousClock.now - t2)")
+
+            self.client = client
+            self._sessionData = session
+            let userID = try client.userId()
+            logger.info("Session restored: \(userID)")
+            setState(.loggedIn(userID: userID))
+            return true
+        } catch {
+            logger.error("Session restore failed: \(error.localizedDescription), clearing stale data")
+            keychain.deleteAll(for: lastUserID)
+            clearLocalData()
+            return false
+        }
+    }
+
+    // MARK: - AuthProtocol
 
     public func login(homeserverURL: String, username: String, password: String) async throws {
         setState(.loggingIn)
@@ -37,7 +116,6 @@ public final class Auth: AuthProtocol, @unchecked Sendable {
         let dataPath = sessionDirectory.appendingPathComponent("data").path
         let cachePath = sessionDirectory.appendingPathComponent("cache").path
 
-        // Generate passphrase for crypto store
         let passphrase = generatePassphrase()
 
         do {
@@ -78,6 +156,7 @@ public final class Auth: AuthProtocol, @unchecked Sendable {
                 oauthData: sdkSession.oauthData
             )
 
+            self._sessionData = nebSession
             try keychain.saveSession(nebSession, for: userID)
             try keychain.savePassphrase(passphrase, for: userID)
 
@@ -90,64 +169,11 @@ public final class Auth: AuthProtocol, @unchecked Sendable {
         }
     }
 
-    public func restoreSession() async throws -> Bool {
-        guard let lastUserID = UserDefaults.standard.string(forKey: "com.neb.lastUserID"),
-              let session = keychain.loadSession(for: lastUserID),
-              let passphrase = keychain.loadPassphrase(for: lastUserID) else {
-            logger.info("No session to restore from Keychain")
-            return false
-        }
-
-        logger.info("Restoring session for \(session.userId) on \(session.homeserverUrl)")
-
-        let slidingSyncVersion: SlidingSyncVersion = session.slidingSyncVersion == "native" ? .native : .none
-
-        let sdkSession = Session(
-            accessToken: session.accessToken,
-            refreshToken: session.refreshToken,
-            userId: session.userId,
-            deviceId: session.deviceId,
-            homeserverUrl: session.homeserverUrl,
-            oauthData: session.oauthData,
-            slidingSyncVersion: slidingSyncVersion
-        )
-
-        let dataPath = sessionDirectory.appendingPathComponent("data").path
-        let cachePath = sessionDirectory.appendingPathComponent("cache").path
-
-        do {
-            let storeConfig = SqliteStoreBuilder(dataPath: dataPath, cachePath: cachePath)
-                .passphrase(passphrase: passphrase)
-
-            let t = ContinuousClock.now
-            let client = try await ClientBuilder()
-                .serverNameOrHomeserverUrl(serverNameOrUrl: session.homeserverUrl)
-                .sqliteStore(config: storeConfig)
-                .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
-                .build()
-            logger.info("Restore: build() took \(ContinuousClock.now - t)")
-
-            let t2 = ContinuousClock.now
-            try await client.restoreSession(session: sdkSession)
-            logger.info("Restore: restoreSession() took \(ContinuousClock.now - t2)")
-
-            self.client = client
-            let userID = try client.userId()
-            logger.info("Session restored: \(userID)")
-            setState(.loggedIn(userID: userID))
-            return true
-        } catch {
-            logger.error("Session restore failed: \(error.localizedDescription), clearing stale data")
-            keychain.deleteAll(for: lastUserID)
-            clearLocalData()
-            return false
-        }
-    }
-
     public func logout() async throws {
         let userID = try? client?.userId()
         try await client?.logout()
         client = nil
+        _sessionData = nil
         if let userID {
             keychain.deleteAll(for: userID)
             UserDefaults.standard.removeObject(forKey: "com.neb.lastUserID")
@@ -157,19 +183,17 @@ public final class Auth: AuthProtocol, @unchecked Sendable {
         setState(.loggedOut)
     }
 
-    public func authStateStream() -> AsyncStream<AuthState> {
-        AsyncStream { continuation in
-            self.continuation = continuation
-            continuation.yield(self._authState)
-        }
-    }
+    // MARK: - Internal (for AppState wiring)
 
     public func getClient() -> Client? { client }
+    public var cachedUserID: String? { _sessionData?.userId }
+    public var cachedHomeserverURL: String? { _sessionData?.homeserverUrl }
+    public var cachedDeviceID: String? { _sessionData?.deviceId }
 
     // MARK: - Private
 
     private func setState(_ state: AuthState) {
-        _authState = state
+        _state = state
         continuation?.yield(state)
 
         if case .loggedIn(let userID) = state {

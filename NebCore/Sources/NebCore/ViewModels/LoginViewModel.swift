@@ -10,14 +10,16 @@ public final class LoginViewModel {
     public var errorMessage: String?
     public private(set) var authState: AuthState = .loggedOut
 
-    private let authService: any AuthProtocol
+    private let auth: any AuthProtocol
+    private let session: any SessionProtocol
 
     public var canLogin: Bool {
         !homeserver.isEmpty && !username.isEmpty && !password.isEmpty && !isLoading
     }
 
-    public init(authService: any AuthProtocol) {
-        self.authService = authService
+    public init(auth: any AuthProtocol, session: any SessionProtocol) {
+        self.auth = auth
+        self.session = session
     }
 
     public func setHomeserver(_ value: String) { homeserver = value }
@@ -28,12 +30,12 @@ public final class LoginViewModel {
         isLoading = true
         errorMessage = nil
         do {
-            try await authService.login(
+            try await auth.login(
                 homeserverURL: homeserver,
                 username: username,
                 password: password
             )
-            authState = await authService.authState
+            authState = await session.state
         } catch {
             errorMessage = error.localizedDescription
             authState = .failed(error.localizedDescription)
@@ -43,9 +45,9 @@ public final class LoginViewModel {
 
     public func tryRestoreSession() async -> Bool {
         do {
-            let restored = try await authService.restoreSession()
+            let restored = try await session.restore()
             if restored {
-                authState = await authService.authState
+                authState = await session.state
             }
             return restored
         } catch {
@@ -55,7 +57,7 @@ public final class LoginViewModel {
 
     public func logout() async {
         do {
-            try await authService.logout()
+            try await auth.logout()
             authState = .loggedOut
         } catch {
             errorMessage = error.localizedDescription

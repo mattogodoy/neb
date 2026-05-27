@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.neb.app", category: "AppState")
 @MainActor
 @Observable
 final class AppState {
-    let authAdapter: Auth
+    let session: Session
     let syncAdapter: MatrixSyncAdapter
     let roomAdapter: Room
     let cryptoAdapter: MatrixCryptoAdapter
@@ -19,24 +19,24 @@ final class AppState {
     private(set) var deviceVerificationStatus: DeviceVerificationStatus = .unknown
 
     init() {
-        let auth = Auth()
-        let sync = MatrixSyncAdapter(clientProvider: { auth.getClient() })
-        let room = Room(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
-        let crypto = MatrixCryptoAdapter(clientProvider: { auth.getClient() })
+        let session = Session()
+        let sync = MatrixSyncAdapter(clientProvider: { session.getClient() })
+        let room = Room(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
+        let crypto = MatrixCryptoAdapter(clientProvider: { session.getClient() })
         let notification = MatrixNotificationAdapter()
-        let typing = MatrixTypingAdapter(clientProvider: { auth.getClient() }, roomListServiceProvider: { sync.roomListService })
+        let typing = MatrixTypingAdapter(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
 
-        self.authAdapter = auth
+        self.session = session
         self.syncAdapter = sync
         self.roomAdapter = room
         self.cryptoAdapter = crypto
         self.notificationAdapter = notification
         self.typingAdapter = typing
-        self.loginViewModel = LoginViewModel(authService: auth)
+        self.loginViewModel = LoginViewModel(auth: session, session: session)
     }
 
     func onLoggedIn() async {
-        AvatarImageCache.shared.setClientProvider { [weak self] in self?.authAdapter.getClient() }
+        AvatarImageCache.shared.setClientProvider { [weak self] in self?.session.getClient() }
         roomListViewModel = RoomListViewModel(
             syncService: syncAdapter,
             notificationService: notificationAdapter,
@@ -60,13 +60,15 @@ final class AppState {
         deviceVerificationStatus = .unknown
     }
 
-    var homeserverURL: String { "https://matrix.matto.io" }
+    var homeserverURL: String {
+        session.cachedHomeserverURL ?? ""
+    }
 
     func makeRoomService() -> any RoomProtocol { roomAdapter }
     func makeCryptoService() -> any CryptoProtocol { cryptoAdapter }
     func makeTypingService() -> any TypingProtocol { typingAdapter }
 
     var currentUserID: String? {
-        try? authAdapter.getClient()?.userId()
+        session.cachedUserID
     }
 }
