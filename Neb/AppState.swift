@@ -58,7 +58,17 @@ final class AppState {
             notificationService: notificationAdapter
         )
         do { let _ = try await notificationAdapter.requestPermission() } catch { logger.error("Failed to request notification permission: \(error)") }
-        do { try await sync.start() } catch { logger.error("Failed to start sync: \(error)") }
+
+        // Sync connects in the background — UI is already showing cached data
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.sync.start()
+            } catch {
+                logger.error("Failed to start sync: \(error)")
+            }
+        }
+
         do { try await securityAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
 
         Task { [weak self] in
@@ -70,7 +80,6 @@ final class AppState {
 
         Task { [weak self] in
             guard let self else { return }
-            // Wait for the first room list emission then start the backfill worker
             for await rooms in self.roomAdapter.roomListStream() {
                 let roomIDs = rooms.map { $0.id }
                 self.backfillWorker.start(roomIDs: roomIDs)
