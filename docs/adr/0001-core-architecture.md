@@ -1,8 +1,8 @@
-# ADR-0001: Core Architecture -- SDK as Source of Truth with Search Index
+# ADR-0001: Core Architecture -- Local Message Database with SDK as Sync Layer
 
 ## Status
 
-Accepted (revised -- originally proposed full local database, reduced to search index only)
+Accepted (revised twice -- originally proposed full local database, reduced to search index only, then expanded to full message database)
 
 ## Context
 
@@ -18,25 +18,23 @@ After investigating:
 
 ## Decisions
 
-### 1. SDK is the Source of Truth
+### 1. Local Database is the Message Store
 
-The SDK's internal database is the canonical data store. Neb does not duplicate room metadata, events, members, or profiles in a separate database. The app reads from the SDK's API (`Room.roomInfo()`, `Room.latestEvent()`, `Room.timeline()`, etc.), which is backed by the SDK's cache.
+The UI reads messages from Neb's local GRDB/SQLCipher database, not the SDK's timeline API. The SDK is the sync and network layer -- it fetches events from the server and decrypts them. The adapters write to the database. View models observe the database reactively via GRDB `ValueObservation`.
 
-### 2. Search Index with GRDB and SQLCipher
+The SDK's event cache is a thin sliding window (~10 items per room via sliding sync). It does not store full conversation history. A background backfill worker paginates backwards from the server to fill in historical messages.
 
-Add a lightweight FTS5 (full-text search) index in a separate SQLite database managed by GRDB. Encrypted with SQLCipher using the passphrase from Keychain.
+See `docs/superpowers/specs/2026-05-28-local-message-database-design.md` for the full spec.
 
-The index stores only what's needed for search:
-- `eventID`, `roomID`, `senderID`, `body`, `timestamp`
-- FTS5 index on `body`
+### 2. Full Message Database with GRDB and SQLCipher
 
-The index is populated as a side effect of the timeline stream -- as messages flow through the adapter, their text is indexed. The index is not a replacement for the SDK's storage. If lost, it rebuilds by paginating backwards through rooms.
+The database stores everything needed to render messages: event ID, room ID, sender ID, body, formatted body, timestamp, edit state, send status. Reactions and read receipts are in separate normalized tables. Profiles (display name, avatar) are cached. FTS5 provides full-text search on message bodies.
 
-Search results return event IDs, which the app uses to jump to context via the SDK's timeline API.
+Encrypted with SQLCipher using the passphrase from Keychain.
 
 ### 3. DM Assignments in the Local Database
 
-DM assignment (which room is "the" DM per user) is stored in the same GRDB/SQLCipher database as the search index. A simple table mapping `directUserID → roomID`. Shares the same encryption and lifecycle as the search index.
+DM assignment (which room is "the" DM per user) is stored in the same GRDB/SQLCipher database. A simple table mapping `directUserID → roomID`. Shares the same encryption and lifecycle.
 
 ### 4. Credentials in the Keychain (implemented)
 
@@ -48,21 +46,20 @@ AppKit-dependent utilities moved to the app target. NebCore imports only Foundat
 
 ### 6. Linter for SDK Import Boundary
 
-Add a build phase or linter rule that prevents `import MatrixRustSDK` outside of `NebCore/Sources/NebCore/Adapters/`.
+Add a build phase or linter rule that prevents `import MatrixRustSDK` outside of adapter code.
 
-## What We Don't Build
+## What We Don't Build (Yet)
 
-- **Full message cache** -- the SDK already caches events in its encrypted SQLite store.
-- **Room metadata database** -- the SDK provides `Room.roomInfo()` and `Room.latestEvent()` from cache.
-- **Offline send queue** -- the SDK has `send_queue_events` built in.
-- **Media cache** -- the SDK has `matrix-sdk-media.sqlite3`.
+- **Room metadata database** -- room name, avatar, member count still come from the SDK's sync stream. Future work may move this to the database.
+- **Media cache** -- the SDK has `matrix-sdk-media.sqlite3`. Future work may add local media storage.
 
 ## Consequences
 
-- Simpler architecture -- one source of truth (the SDK), one small index for search.
-- No schema migration complexity for event/room/member storage.
-- GRDB is only needed for the search index (lightweight dependency).
-- Search is local and instant once indexed.
-- If the SDK changes its internal storage format, Neb is unaffected (we don't read the SDK's database).
-- DM assignments are simple and portable via UserDefaults.
-- Credentials are protected by the OS Keychain.
+- Instant room loads -- messages are in the local database, no server round-trip.
+- Full offline access -- conversations are readable without network.
+- Complete local search -- FTS5 covers all indexed messages.
+- Background backfill fills in history progressively.
+- Local echo for sends -- pending messages appear immediately, reconciled on confirmation.
+- More complex than the previous search-index-only approach -- schema migrations, write coordination, deduplication.
+- The SDK is still the authority for protocol, crypto, and sync. The database can be rebuilt by re-running the backfill worker.
+- DM assignments and credentials are unchanged from the previous revision.

@@ -11,7 +11,7 @@ Neb is a native macOS Matrix client. Named after the Nebuchadnezzar from The Mat
 - **Group** -- any room that is not the designated DM for a user. Includes rooms the SDK marks as `isDirect` if they are not the chosen DM.
 - **Timeline** -- the ordered stream of events in a room. The SDK caches events in its internal database; Neb reads from the SDK's timeline API.
 - **Message** -- a timeline event with displayable content (text, media, replies, reactions). The core understands all Matrix message types, not just text.
-- **Search Index** -- a lightweight FTS5 index (GRDB/SQLCipher) that indexes message text as it flows through the timeline stream. Not a copy of the SDK's data -- just a search-optimized index of message bodies.
+- **Message Database** -- a local GRDB/SQLCipher database that stores the full conversation history. The UI reads from this database, not the SDK's timeline API. Includes FTS5 for full-text search on message bodies. Populated by the live sync stream and a background backfill worker.
 - **Session** -- the authenticated connection to a homeserver. Credentials (access token, user ID, device ID) and the crypto store passphrase are stored in the platform Keychain, not in plain files.
 
 ## Architecture Layers
@@ -26,14 +26,14 @@ NebCore (Swift Package, platform-agnostic)
   Services -- protocol definitions (seam between app and core)
   Adapters -- implement protocols using MatrixRustSDK
   Models -- NebRoom, NebMessage, NebUser, etc.
-  Search Index -- GRDB/SQLCipher FTS5 index, populated from timeline stream
+  Database -- GRDB/SQLCipher message store with FTS5 search, populated by sync and backfill
 ```
 
 - **Services (Protocols)** -- the public API. View models receive protocols through dependency injection. Each protocol covers a domain: rooms, timeline, auth, crypto, typing, notifications.
-- **Adapters** -- implement the protocols. Read from the SDK's API (which is backed by the SDK's internal cache). Delegate actions (send, edit, react) to the SDK.
-- **Search Index** -- GRDB/SQLCipher, indexes message bodies for local full-text search. Populated as a side effect of the timeline stream. Not a duplicate of the SDK's data.
+- **Adapters** -- implement the protocols. Write to the local database from SDK events. Delegate actions (send, edit, react) to the SDK.
+- **Database** -- GRDB/SQLCipher, stores full message history with FTS5 search. View models observe the database reactively. Populated by live sync and a background backfill worker.
 
-The SDK is the source of truth for all Matrix data. The local database (search index + DM assignments) and the Keychain (credentials) are the only separate persistence Neb maintains.
+The SDK is the source of truth for protocol, crypto, and sync. The local database (messages, reactions, read receipts, profiles, DM assignments) and the Keychain (credentials) are Neb's persistent storage.
 
 ## Rules
 
@@ -41,5 +41,5 @@ The SDK is the source of truth for all Matrix data. The local database (search i
 - NebCore does not import AppKit or UIKit. Platform-specific code lives in the app target. Cross-platform guards (`#if canImport`) are acceptable for types like `NSImage`/`UIImage` in shared utilities like avatar caching.
 - One DM per user. Automatic assignment on first encounter, persists in the local database.
 - Credentials in the Keychain, never in plain files.
-- The search index is encrypted with SQLCipher. The encryption key is a random passphrase stored in the Keychain.
-- The Rust SDK is the source of truth for protocol, crypto, and sync. The search index can be rebuilt by paginating through room timelines.
+- The database is encrypted with SQLCipher. The encryption key is a random passphrase stored in the Keychain.
+- The Rust SDK is the source of truth for protocol, crypto, and sync. The local database can be rebuilt by re-running the backfill worker.
