@@ -15,6 +15,7 @@ final class AppState {
     let notificationAdapter: MatrixNotificationAdapter
     let typingAdapter: MatrixTypingAdapter
     let database: NebDatabase
+    let backfillWorker: BackfillWorker
 
     private(set) var loginViewModel: LoginViewModel
     private(set) var roomListViewModel: RoomListViewModel?
@@ -34,6 +35,11 @@ final class AppState {
         let security = Security(clientProvider: { session.getClient() })
         let notification = MatrixNotificationAdapter()
         let typing = MatrixTypingAdapter(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
+        let backfill = BackfillWorker(
+            clientProvider: { session.getClient() },
+            roomListServiceProvider: { sync.roomListService },
+            database: database
+        )
 
         self.database = database
         self.session = session
@@ -43,6 +49,7 @@ final class AppState {
         self.securityAdapter = security
         self.notificationAdapter = notification
         self.typingAdapter = typing
+        self.backfillWorker = backfill
         self.loginViewModel = LoginViewModel(auth: session, session: session)
     }
 
@@ -64,9 +71,20 @@ final class AppState {
                 self.deviceVerificationStatus = status
             }
         }
+
+        Task { [weak self] in
+            guard let self else { return }
+            // Wait for the first room list emission then start the backfill worker
+            for await rooms in self.syncAdapter.roomListStream() {
+                let roomIDs = rooms.map { $0.id }
+                self.backfillWorker.start(roomIDs: roomIDs)
+                break
+            }
+        }
     }
 
     func onLoggedOut() async {
+        backfillWorker.stop()
         do { try await syncAdapter.stopSync() } catch { logger.error("Failed to stop sync: \(error)") }
         roomListViewModel = nil
         deviceVerificationStatus = .unknown
