@@ -8,6 +8,7 @@ struct MainView: View {
     var securityServiceProvider: (() -> any SecurityProtocol)?
     var typingServiceProvider: (() -> any TypingProtocol)?
     var currentUserID: String?
+    var database: NebDatabase?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
     var homeserverURL: String = ""
     var onLogout: (() -> Void)?
@@ -72,13 +73,14 @@ struct MainView: View {
             Text("You'll need to log in again and re-verify this device.")
         }
         .onChange(of: roomListViewModel.selectedRoom?.id) { _, newID in
-            if let newID {
+            if let newID, let db = database {
                 let room = roomListViewModel.allRooms.first { $0.id == newID }
                 timelineViewModel = TimelineViewModel(
                     roomID: newID,
                     roomService: timelineServiceProvider(),
+                    database: db,
+                    currentUserID: currentUserID ?? "",
                     typingService: typingServiceProvider?(),
-                    currentUserID: currentUserID,
                     initialUnreadCount: room?.unreadCount ?? 0
                 )
             } else {

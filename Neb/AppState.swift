@@ -14,20 +14,28 @@ final class AppState {
     let securityAdapter: Security
     let notificationAdapter: MatrixNotificationAdapter
     let typingAdapter: MatrixTypingAdapter
+    let database: NebDatabase
 
     private(set) var loginViewModel: LoginViewModel
     private(set) var roomListViewModel: RoomListViewModel?
     private(set) var deviceVerificationStatus: DeviceVerificationStatus = .unknown
 
     init() {
+        let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Neb", isDirectory: true)
+        try? FileManager.default.createDirectory(at: supportDir, withIntermediateDirectories: true)
+        let dbPath = supportDir.appendingPathComponent("neb.db").path
+        let database = try! NebDatabase(path: dbPath)
+
         let session = Session()
         let sync = MatrixSyncAdapter(clientProvider: { session.getClient() })
-        let room = Room(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
+        let room = Room(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService }, database: database)
         let devices = Devices(clientProvider: { session.getClient() })
         let security = Security(clientProvider: { session.getClient() })
         let notification = MatrixNotificationAdapter()
         let typing = MatrixTypingAdapter(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
 
+        self.database = database
         self.session = session
         self.syncAdapter = sync
         self.roomAdapter = room

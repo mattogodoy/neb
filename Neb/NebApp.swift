@@ -29,6 +29,7 @@ struct NebApp: App {
                                 securityServiceProvider: { appState.makeSecurityService() },
                                 typingServiceProvider: { appState.makeTypingService() },
                                 currentUserID: appState.currentUserID,
+                                database: appState.database,
                                 deviceVerificationStatus: appState.deviceVerificationStatus,
                                 homeserverURL: appState.homeserverURL,
                                 onLogout: {

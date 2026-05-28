@@ -18,9 +18,12 @@ public final class TimelineViewModel {
 
     private let roomID: String
     private let roomService: any TimelineProtocol
+    private let database: NebDatabase
+    private let currentUserID: String
     private let typingService: (any TypingProtocol)?
-    private let currentUserID: String?
-    @ObservationIgnored nonisolated(unsafe) private var timelineTask: Task<Void, Never>?
+    private var messageLimit = 50
+    @ObservationIgnored nonisolated(unsafe) private var observationTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingDebounceTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var isCurrentlyTyping = false
@@ -28,23 +31,37 @@ public final class TimelineViewModel {
     public init(
         roomID: String,
         roomService: any TimelineProtocol,
+        database: NebDatabase,
+        currentUserID: String,
         typingService: (any TypingProtocol)? = nil,
-        currentUserID: String? = nil,
         initialUnreadCount: UInt = 0
     ) {
         self.roomID = roomID
         self.roomService = roomService
-        self.typingService = typingService
+        self.database = database
         self.currentUserID = currentUserID
+        self.typingService = typingService
         self.initialUnreadCount = initialUnreadCount
         startObserving()
         startTypingObserving()
+        syncTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.roomService.startTimelineSync(roomID: self.roomID)
+            } catch {
+                logger.error("Failed to start timeline sync for \(self.roomID): \(error)")
+            }
+        }
     }
 
     deinit {
-        timelineTask?.cancel()
+        observationTask?.cancel()
         typingTask?.cancel()
         typingDebounceTask?.cancel()
+        syncTask?.cancel()
+        let roomService = self.roomService
+        let roomID = self.roomID
+        Task { try? await roomService.stopTimelineSync(roomID: roomID) }
     }
 
     public func onComposerChanged(text: String) {
@@ -78,7 +95,7 @@ public final class TimelineViewModel {
     }
 
     public func markAsRead() async {
-        guard let lastMessage = messages.last else { return }
+        guard !messages.isEmpty else { return }
         do {
             try await roomService.markAsRead(roomID: roomID)
         } catch { logger.error("Failed to send read receipt in \(self.roomID): \(error)") }
@@ -87,10 +104,9 @@ public final class TimelineViewModel {
     public func loadMore() async {
         guard !isLoadingMore else { return }
         isLoadingMore = true
-        do {
-            try await roomService.paginateBackwards(roomID: roomID, count: 50)
-            try? await Task.sleep(for: .milliseconds(500))
-        } catch { logger.error("Failed to paginate backwards in \(self.roomID): \(error)") }
+        messageLimit += 50
+        restartObservation()
+        try? await Task.sleep(for: .milliseconds(200))
         isLoadingMore = false
     }
 
@@ -134,15 +150,51 @@ public final class TimelineViewModel {
     }
 
     private func startObserving() {
-        timelineTask = Task { [weak self] in
+        let stream = database.observeMessages(roomID: roomID, limit: messageLimit)
+        observationTask = Task { [weak self] in
             guard let self else { return }
-            for await messages in self.roomService.messageStream(roomID: self.roomID) {
+            for await rows in stream {
                 guard !Task.isCancelled else { break }
-                self.messages = messages
-                self.messageLayouts = Self.computeLayouts(for: messages)
-                self.hasLoadedInitialTimeline = true
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.messages = rows.map { self.toNebMessage($0) }
+                    self.messageLayouts = Self.computeLayouts(for: self.messages)
+                    self.hasLoadedInitialTimeline = true
+                }
             }
         }
+    }
+
+    private func restartObservation() {
+        observationTask?.cancel()
+        startObserving()
+    }
+
+    private func toNebMessage(_ row: MessageWithProfile) -> NebMessage {
+        let m = row.message
+        let isOutgoing = m.senderID == currentUserID
+        let sendStatus: SendStatus = switch m.sendStatus {
+        case "pending", "sending": .sending
+        case "failed": .failed
+        default: .sent
+        }
+        return NebMessage(
+            id: m.eventID,
+            roomID: m.roomID,
+            senderID: m.senderID,
+            senderDisplayName: row.displayName ?? m.senderID,
+            senderAvatarURL: row.avatarURL,
+            body: m.body,
+            formattedBody: m.formattedBody,
+            timestamp: Date(timeIntervalSince1970: m.timestamp),
+            isOutgoing: isOutgoing,
+            sendStatus: sendStatus,
+            readReceipts: [],
+            reactions: [],
+            isEdited: m.isEdited,
+            isEditable: isOutgoing && m.sendStatus == "sent",
+            isEmojiOnly: m.body.isEmojiOnly
+        )
     }
 
     private static func computeLayouts(for messages: [NebMessage]) -> [String: MessageLayout] {
@@ -198,11 +250,8 @@ public final class TimelineViewModel {
             guard let self else { return }
             for await users in typingService.typingUsersStream(roomID: self.roomID) {
                 guard !Task.isCancelled else { break }
-                if let myID = self.currentUserID {
-                    self.typingUsers = users.filter { $0.id != myID }
-                } else {
-                    self.typingUsers = users
-                }
+                let myID = self.currentUserID
+                self.typingUsers = users.filter { $0.id != myID }
             }
         }
     }

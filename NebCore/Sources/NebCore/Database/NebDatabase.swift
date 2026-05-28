@@ -291,7 +291,7 @@ public final class NebDatabase: Sendable {
     // MARK: - Observation
 
     /// Returns a ValueObservation that emits messages for a room whenever they change.
-    public func messagesObservation(roomID: String) -> ValueObservation<ValueReducers.Fetch<[MessageWithProfile]>> {
+    public func messagesObservation(roomID: String, limit: Int = 50) -> ValueObservation<ValueReducers.Fetch<[MessageWithProfile]>> {
         ValueObservation.tracking { db in
             let rows = try Row.fetchAll(
                 db,
@@ -301,10 +301,34 @@ public final class NebDatabase: Sendable {
                     LEFT JOIN profiles ON messages.senderID = profiles.userID
                     WHERE messages.roomID = ?
                     ORDER BY messages.timestamp ASC
+                    LIMIT ?
                     """,
-                arguments: [roomID]
+                arguments: [roomID, limit]
             )
             return try rows.map { try MessageWithProfile(row: $0) }
+        }
+    }
+
+    /// Observe messages for a room as an AsyncStream. Emits immediately with current rows,
+    /// then re-emits whenever the database changes. The stream ends when the caller cancels.
+    @MainActor
+    public func observeMessages(roomID: String, limit: Int = 50) -> AsyncStream<[MessageWithProfile]> {
+        AsyncStream { continuation in
+            let observation = messagesObservation(roomID: roomID, limit: limit)
+            let cancellable = observation.start(
+                in: dbQueue,
+                scheduling: .immediate,
+                onError: { error in
+                    logger.error("observeMessages error for \(roomID): \(error)")
+                    continuation.finish()
+                },
+                onChange: { rows in
+                    continuation.yield(rows)
+                }
+            )
+            continuation.onTermination = { _ in
+                cancellable.cancel()
+            }
         }
     }
 
