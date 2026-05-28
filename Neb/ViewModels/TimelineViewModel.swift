@@ -21,6 +21,7 @@ public final class TimelineViewModel {
     private let database: NebDatabase
     private let currentUserID: String
     private let typingService: (any TypingProtocol)?
+    private let syncService: (any SyncProtocol)?
     private var messageLimit = 50
     @ObservationIgnored nonisolated(unsafe) private var observationTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
@@ -34,6 +35,7 @@ public final class TimelineViewModel {
         database: NebDatabase,
         currentUserID: String,
         typingService: (any TypingProtocol)? = nil,
+        syncService: (any SyncProtocol)? = nil,
         initialUnreadCount: UInt = 0
     ) {
         self.roomID = roomID
@@ -41,15 +43,33 @@ public final class TimelineViewModel {
         self.database = database
         self.currentUserID = currentUserID
         self.typingService = typingService
+        self.syncService = syncService
         self.initialUnreadCount = initialUnreadCount
         startObserving()
         startTypingObserving()
         syncTask = Task { [weak self] in
             guard let self else { return }
+
+            // First attempt
             do {
                 try await self.roomService.startTimelineSync(roomID: self.roomID)
+                return // success
             } catch {
-                logger.error("Failed to start timeline sync for \(self.roomID): \(error)")
+                logger.warning("Timeline sync unavailable for \(self.roomID), waiting for connection...")
+            }
+
+            // Wait for sync to come online, then retry
+            guard let syncService = self.syncService else { return }
+            for await online in syncService.statusStream() {
+                guard !Task.isCancelled else { break }
+                if online {
+                    do {
+                        try await self.roomService.startTimelineSync(roomID: self.roomID)
+                        return // success
+                    } catch {
+                        logger.error("Failed to start timeline sync for \(self.roomID) after reconnect: \(error)")
+                    }
+                }
             }
         }
     }

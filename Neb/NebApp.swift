@@ -28,6 +28,7 @@ struct NebApp: App {
                                 roomsServiceProvider: { appState.makeRoomsService() },
                                 securityServiceProvider: { appState.makeSecurityService() },
                                 typingServiceProvider: { appState.makeTypingService() },
+                                syncServiceProvider: { appState.makeSyncService() },
                                 currentUserID: appState.currentUserID,
                                 database: appState.database,
                                 deviceVerificationStatus: appState.deviceVerificationStatus,

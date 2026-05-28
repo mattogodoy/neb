@@ -7,6 +7,7 @@ struct MainView: View {
     var roomsServiceProvider: (() -> any RoomsProtocol)?
     var securityServiceProvider: (() -> any SecurityProtocol)?
     var typingServiceProvider: (() -> any TypingProtocol)?
+    var syncServiceProvider: (() -> any SyncProtocol)?
     var currentUserID: String?
     var database: NebDatabase?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
@@ -81,6 +82,7 @@ struct MainView: View {
                     database: db,
                     currentUserID: currentUserID ?? "",
                     typingService: typingServiceProvider?(),
+                    syncService: syncServiceProvider?(),
                     initialUnreadCount: room?.unreadCount ?? 0
                 )
             } else {

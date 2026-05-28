@@ -107,6 +107,7 @@ final class AppState {
     func makeMembersService() -> any MembersProtocol { roomAdapter }
     func makeSecurityService() -> any SecurityProtocol { securityAdapter }
     func makeTypingService() -> any TypingProtocol { roomAdapter }
+    func makeSyncService() -> any SyncProtocol { sync }
 
     var currentUserID: String? {
         session.cachedUserID
