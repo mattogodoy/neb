@@ -37,7 +37,7 @@ struct NebApp: App {
                                 }
                             )
                         } else {
-                            ProgressView("Starting sync...")
+                            ProgressView()
                         }
                     default:
                         LoginView(viewModel: appState.loginViewModel)
