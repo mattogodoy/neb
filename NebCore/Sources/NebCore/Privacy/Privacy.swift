@@ -6,190 +6,25 @@ private let logger = Logger(subsystem: "com.neb.app", category: "Privacy")
 
 public final class Privacy: PrivacyProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
-    private var controller: SessionVerificationController?
-    private var delegate: VerificationDelegateImpl?
-    private var continuation: AsyncStream<VerificationState>.Continuation?
-    private var pendingRequest: SessionVerificationRequestDetails?
 
     public init(clientProvider: @escaping () -> Client?) {
         self.clientProvider = clientProvider
     }
 
-    public func setupVerificationListener() async throws {
-        guard let client = clientProvider() else { throw NebError.notLoggedIn }
-        let ctrl = try await client.getSessionVerificationController()
-        self.controller = ctrl
-
-        let del = VerificationDelegateImpl { [weak self] state in
-            logger.info("Verification state: \(String(describing: state))")
-            self?.continuation?.yield(state)
-        } onRequest: { [weak self] details in
-            logger.info("Incoming verification request from \(details.senderProfile.userId)")
-            self?.pendingRequest = details
-            self?.continuation?.yield(.requested)
-        }
-        del.controller = ctrl
-        self.delegate = del
-        ctrl.setDelegate(delegate: del)
-        logger.info("Verification listener active")
+    public func blockUser(userID: String) async throws {
+        guard let client = clientProvider() else { return }
+        try await client.ignoreUser(userId: userID)
+        logger.info("Blocked user \(userID)")
     }
 
-    public func startDeviceVerification() async throws {
-        guard let controller else {
-            logger.info("startDeviceVerification: no controller, setting up listener")
-            try await setupVerificationListener()
-            guard let controller = self.controller else { throw NebError.notLoggedIn }
-            logger.info("startDeviceVerification: requesting verification")
-            try await controller.requestDeviceVerification()
-            continuation?.yield(.waitingForAcceptance)
-            return
-        }
-        logger.info("startDeviceVerification: requesting verification")
-        try await controller.requestDeviceVerification()
-        continuation?.yield(.waitingForAcceptance)
+    public func unblockUser(userID: String) async throws {
+        guard let client = clientProvider() else { return }
+        try await client.unignoreUser(userId: userID)
+        logger.info("Unblocked user \(userID)")
     }
 
-    public func startUserVerification(userID: String) async throws {
-        guard let controller else {
-            logger.error("startUserVerification: no controller, setting up listener first")
-            try await setupVerificationListener()
-            guard let controller = self.controller else { throw NebError.notLoggedIn }
-            logger.info("startUserVerification: requesting verification for \(userID)")
-            try await controller.requestUserVerification(userId: userID)
-            continuation?.yield(.waitingForAcceptance)
-            return
-        }
-        logger.info("startUserVerification: requesting verification for \(userID)")
-        try await controller.requestUserVerification(userId: userID)
-        continuation?.yield(.waitingForAcceptance)
-    }
-
-    public func acceptVerification() async throws {
-        guard let controller else { return }
-        if let request = pendingRequest {
-            try await controller.acknowledgeVerificationRequest(
-                senderId: request.senderProfile.userId,
-                flowId: request.flowId
-            )
-            try await controller.acceptVerificationRequest()
-            try await controller.startSasVerification()
-            pendingRequest = nil
-        } else {
-            try await controller.startSasVerification()
-        }
-    }
-
-    public func confirmEmoji() async throws {
-        try await controller?.approveVerification()
-    }
-
-    public func declineEmoji() async throws {
-        try await controller?.declineVerification()
-    }
-
-    public func cancelVerification() async throws {
-        try await controller?.cancelVerification()
-    }
-
-    public func verificationStateStream() -> AsyncStream<VerificationState> {
-        AsyncStream { continuation in
-            self.continuation = continuation
-            continuation.yield(.idle)
-        }
-    }
-
-    public func isUserVerified(userID: String) async -> Bool {
-        guard let client = clientProvider() else { return false }
-        do {
-            let identity = try await client.encryption().userIdentity(userId: userID, fallbackToServer: false)
-            return identity?.isVerified() ?? false
-        } catch {
-            return false
-        }
-    }
-
-    public func hasKeyBackup() async throws -> Bool {
-        guard let client = clientProvider() else { throw NebError.notLoggedIn }
-        return try await client.encryption().backupExistsOnServer()
-    }
-
-    public func recoverKeys(recoveryKey: String) async throws {
-        guard let client = clientProvider() else { throw NebError.notLoggedIn }
-        let encryption = client.encryption()
-        logger.info("Starting key recovery (state: \(String(describing: encryption.recoveryState())))...")
-        do {
-            try await encryption.recoverAndFixBackup(recoveryKey: recoveryKey)
-        } catch let error as RecoveryError {
-            logger.error("Key recovery failed: \(error)")
-            switch error {
-            case .SecretStorage:
-                throw NebError.recoveryFailed("Could not find secret storage data on the server. You may need to reset your recovery key from another client.")
-            case .Import:
-                throw NebError.recoveryFailed("Invalid recovery key. Please check and try again.")
-            case .BackupExistsOnServer:
-                throw NebError.recoveryFailed("A key backup conflict was detected. Try disabling and re-enabling recovery from another client.")
-            case .Client:
-                throw NebError.recoveryFailed("Could not connect to the server. Check your connection and try again.")
-            }
-        }
-        logger.info("Key recovery complete, waiting for E2EE initialization...")
-        await encryption.waitForE2eeInitializationTasks()
-        logger.info("E2EE initialization complete")
-    }
-}
-
-private final class VerificationDelegateImpl: SessionVerificationControllerDelegate, @unchecked Sendable {
-    private let onStateChange: (VerificationState) -> Void
-    private let onRequest: (SessionVerificationRequestDetails) -> Void
-    weak var controller: SessionVerificationController?
-
-    init(
-        onStateChange: @escaping (VerificationState) -> Void,
-        onRequest: @escaping (SessionVerificationRequestDetails) -> Void
-    ) {
-        self.onStateChange = onStateChange
-        self.onRequest = onRequest
-    }
-
-    func didReceiveVerificationRequest(details: SessionVerificationRequestDetails) {
-        onRequest(details)
-    }
-
-    func didAcceptVerificationRequest() {
-        logger.info("Other side accepted, starting SAS verification")
-        Task {
-            do {
-                try await controller?.startSasVerification()
-            } catch {
-                logger.error("Failed to start SAS verification: \(error)")
-            }
-        }
-    }
-
-    func didStartSasVerification() {}
-
-    func didReceiveVerificationData(data: SessionVerificationData) {
-        switch data {
-        case .emojis(let emojis, _):
-            let mapped = emojis.map {
-                VerificationEmoji(symbol: $0.symbol(), description: $0.description())
-            }
-            onStateChange(.showingEmoji(mapped))
-        case .decimals(let values):
-            let desc = values.map { String($0) }.joined(separator: " ")
-            onStateChange(.showingEmoji([VerificationEmoji(symbol: desc, description: "Decimal verification")]))
-        }
-    }
-
-    func didFail() {
-        onStateChange(.failed("Verification failed"))
-    }
-
-    func didCancel() {
-        onStateChange(.cancelled)
-    }
-
-    func didFinish() {
-        onStateChange(.confirmed)
+    public func blockedUsers() async throws -> [String] {
+        guard let client = clientProvider() else { return [] }
+        return try await client.ignoredUsers()
     }
 }

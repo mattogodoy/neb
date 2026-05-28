@@ -11,7 +11,7 @@ final class AppState {
     let syncAdapter: MatrixSyncAdapter
     let roomAdapter: Room
     let devicesAdapter: Devices
-    let privacyAdapter: Privacy
+    let securityAdapter: Security
     let notificationAdapter: MatrixNotificationAdapter
     let typingAdapter: MatrixTypingAdapter
 
@@ -24,7 +24,7 @@ final class AppState {
         let sync = MatrixSyncAdapter(clientProvider: { session.getClient() })
         let room = Room(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
         let devices = Devices(clientProvider: { session.getClient() })
-        let privacy = Privacy(clientProvider: { session.getClient() })
+        let security = Security(clientProvider: { session.getClient() })
         let notification = MatrixNotificationAdapter()
         let typing = MatrixTypingAdapter(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
 
@@ -32,7 +32,7 @@ final class AppState {
         self.syncAdapter = sync
         self.roomAdapter = room
         self.devicesAdapter = devices
-        self.privacyAdapter = privacy
+        self.securityAdapter = security
         self.notificationAdapter = notification
         self.typingAdapter = typing
         self.loginViewModel = LoginViewModel(auth: session, session: session)
@@ -47,7 +47,7 @@ final class AppState {
         )
         do { let _ = try await notificationAdapter.requestPermission() } catch { logger.error("Failed to request notification permission: \(error)") }
         do { try await syncAdapter.startSync() } catch { logger.error("Failed to start sync: \(error)") }
-        do { try await privacyAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
+        do { try await securityAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
 
         Task { [weak self] in
             guard let self else { return }
@@ -68,7 +68,7 @@ final class AppState {
     }
 
     func makeRoomService() -> any RoomProtocol { roomAdapter }
-    func makePrivacyService() -> any PrivacyProtocol { privacyAdapter }
+    func makeSecurityService() -> any SecurityProtocol { securityAdapter }
     func makeTypingService() -> any TypingProtocol { typingAdapter }
 
     var currentUserID: String? {

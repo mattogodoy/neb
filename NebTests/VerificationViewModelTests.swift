@@ -4,15 +4,15 @@ import Testing
 import NebCore
 
 @Test func verificationInitialStateIsIdle() async {
-    let crypto = MockPrivacyService()
-    let vm = await VerificationViewModel(privacyService: crypto)
+    let crypto = MockSecurityService()
+    let vm = await VerificationViewModel(securityService: crypto)
     let state = await vm.state
     #expect(state == .idle)
 }
 
 @Test func startDeviceVerification() async throws {
-    let crypto = MockPrivacyService()
-    let vm = await VerificationViewModel(privacyService: crypto)
+    let crypto = MockSecurityService()
+    let vm = await VerificationViewModel(securityService: crypto)
 
     await vm.startDeviceVerification()
 
@@ -22,8 +22,8 @@ import NebCore
 }
 
 @Test func acceptShowsEmoji() async throws {
-    let crypto = MockPrivacyService()
-    let vm = await VerificationViewModel(privacyService: crypto)
+    let crypto = MockSecurityService()
+    let vm = await VerificationViewModel(securityService: crypto)
 
     await vm.startDeviceVerification()
     try await Task.sleep(for: .milliseconds(50))
@@ -41,8 +41,8 @@ import NebCore
 }
 
 @Test func confirmEmojiCompletes() async throws {
-    let crypto = MockPrivacyService()
-    let vm = await VerificationViewModel(privacyService: crypto)
+    let crypto = MockSecurityService()
+    let vm = await VerificationViewModel(securityService: crypto)
 
     await vm.startDeviceVerification()
     try await Task.sleep(for: .milliseconds(50))
@@ -56,8 +56,8 @@ import NebCore
 }
 
 @Test func declineEmojiFails() async throws {
-    let crypto = MockPrivacyService()
-    let vm = await VerificationViewModel(privacyService: crypto)
+    let crypto = MockSecurityService()
+    let vm = await VerificationViewModel(securityService: crypto)
 
     await vm.startDeviceVerification()
     try await Task.sleep(for: .milliseconds(50))
@@ -75,8 +75,8 @@ import NebCore
 }
 
 @Test func cancelVerification() async throws {
-    let crypto = MockPrivacyService()
-    let vm = await VerificationViewModel(privacyService: crypto)
+    let crypto = MockSecurityService()
+    let vm = await VerificationViewModel(securityService: crypto)
 
     await vm.startDeviceVerification()
     try await Task.sleep(for: .milliseconds(50))
@@ -88,8 +88,8 @@ import NebCore
 }
 
 @Test func startUserVerification() async throws {
-    let crypto = MockPrivacyService()
-    let vm = await VerificationViewModel(privacyService: crypto)
+    let crypto = MockSecurityService()
+    let vm = await VerificationViewModel(securityService: crypto)
 
     await vm.startUserVerification(userID: "@alice:example.com")
 

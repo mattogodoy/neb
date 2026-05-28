@@ -4,7 +4,7 @@ import NebCore
 struct DeviceVerificationView: View {
     @Bindable var viewModel: VerificationViewModel
     var isAlreadyVerified: Bool = false
-    var privacyService: (any PrivacyProtocol)?
+    var securityService: (any SecurityProtocol)?
     @Environment(\.dismiss) private var dismiss
 
     @State private var showRecoveryKeyInput = false
@@ -330,7 +330,7 @@ struct DeviceVerificationView: View {
         recoveryError = nil
         Task {
             do {
-                try await privacyService?.recoverKeys(recoveryKey: key)
+                try await securityService?.recoverKeys(recoveryKey: key)
                 recoveryComplete = true
             } catch {
                 recoveryError = error.localizedDescription

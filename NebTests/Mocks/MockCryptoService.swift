@@ -1,7 +1,7 @@
 import Foundation
 import NebCore
 
-final class MockPrivacyService: PrivacyProtocol, @unchecked Sendable {
+final class MockSecurityService: SecurityProtocol, @unchecked Sendable {
     var currentState: VerificationState = .idle
     private var stateContinuation: AsyncStream<VerificationState>.Continuation?
 

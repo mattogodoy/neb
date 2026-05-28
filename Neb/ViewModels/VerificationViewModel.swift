@@ -7,14 +7,14 @@ public final class VerificationViewModel {
     public private(set) var state: VerificationState = .idle
     public var errorMessage: String?
 
-    private let privacyService: any PrivacyProtocol
+    private let securityService: any SecurityProtocol
     @ObservationIgnored nonisolated(unsafe) private var stateTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var timeoutTask: Task<Void, Never>?
 
     private static let timeoutSeconds: UInt64 = 60
 
-    public init(privacyService: any PrivacyProtocol) {
-        self.privacyService = privacyService
+    public init(securityService: any SecurityProtocol) {
+        self.securityService = securityService
         startObserving()
     }
 
@@ -25,7 +25,7 @@ public final class VerificationViewModel {
 
     public func startDeviceVerification() async {
         do {
-            try await privacyService.startDeviceVerification()
+            try await securityService.startDeviceVerification()
             startTimeout()
         } catch {
             errorMessage = error.localizedDescription
@@ -34,7 +34,7 @@ public final class VerificationViewModel {
 
     public func startUserVerification(userID: String) async {
         do {
-            try await privacyService.startUserVerification(userID: userID)
+            try await securityService.startUserVerification(userID: userID)
             startTimeout()
         } catch {
             errorMessage = error.localizedDescription
@@ -43,7 +43,7 @@ public final class VerificationViewModel {
 
     public func acceptVerification() async {
         do {
-            try await privacyService.acceptVerification()
+            try await securityService.acceptVerification()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -51,7 +51,7 @@ public final class VerificationViewModel {
 
     public func confirmEmoji() async {
         do {
-            try await privacyService.confirmEmoji()
+            try await securityService.confirmEmoji()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -59,7 +59,7 @@ public final class VerificationViewModel {
 
     public func declineEmoji() async {
         do {
-            try await privacyService.declineEmoji()
+            try await securityService.declineEmoji()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -67,7 +67,7 @@ public final class VerificationViewModel {
 
     public func cancelVerification() async {
         do {
-            try await privacyService.cancelVerification()
+            try await securityService.cancelVerification()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -82,7 +82,7 @@ public final class VerificationViewModel {
     private func startObserving() {
         stateTask = Task { [weak self] in
             guard let self else { return }
-            for await newState in self.privacyService.verificationStateStream() {
+            for await newState in self.securityService.verificationStateStream() {
                 guard !Task.isCancelled else { break }
                 self.state = newState
                 if newState.isTerminal {
