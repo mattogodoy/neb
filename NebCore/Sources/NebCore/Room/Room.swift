@@ -538,8 +538,10 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                         transactionID: eventID,
                         confirmedEventID: confirmedEventID
                     )
-                    return
                 }
+                // Always return — the message will arrive again as a regular
+                // timeline item (without localSendState) and get inserted then.
+                return
             case .sendingFailed(_, _):
                 try? database.updateSendStatus(eventID: eventID, status: "failed")
                 return
