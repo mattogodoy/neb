@@ -14,4 +14,5 @@ public protocol RoomsProtocol: TypingProtocol {
     func setRoomTopic(roomID: String, topic: String) async throws
     func setRoomAvatar(roomID: String, data: Data, mimeType: String) async throws
     func roomInfo(roomID: String) async throws -> NebRoom
+    @MainActor func roomListStream() -> AsyncStream<[NebRoom]>
 }

@@ -375,6 +375,10 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
         )
     }
 
+    @MainActor public func roomListStream() -> AsyncStream<[NebRoom]> {
+        database.roomListObservation()
+    }
+
     // MARK: - SearchProtocol
 
     public func search(query: String, roomID: String) async throws -> [SearchResult] {

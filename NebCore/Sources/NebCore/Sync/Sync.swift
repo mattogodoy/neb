@@ -5,24 +5,27 @@ import os
 private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Sync")
 
-public final class MatrixSyncAdapter: SyncProtocol, @unchecked Sendable {
+public final class Sync: SyncProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
+    private let database: NebDatabase
     private var syncService: MatrixRustSDK.SyncService?
     public private(set) var roomListService: RoomListService?
-    private var continuations: [UUID: AsyncStream<[NebRoom]>.Continuation] = [:]
+    public nonisolated(unsafe) private(set) var isOnline: Bool = false
+    private var statusContinuations: [UUID: AsyncStream<Bool>.Continuation] = [:]
     private var rooms: [SDKRoom] = []
+    private var knownRoomIDs: Set<String> = []
     private var allRoomsList: RoomList?
     private var entriesListener: NebRoomListEntriesListener?
     private var entriesHandle: TaskHandle?
     private var entriesController: RoomListDynamicEntriesController?
-    private var latestNebRooms: [NebRoom] = []
     private var emitWorkItem: DispatchWorkItem?
 
-    public init(clientProvider: @escaping () -> Client?) {
+    public init(clientProvider: @escaping () -> Client?, database: NebDatabase) {
         self.clientProvider = clientProvider
+        self.database = database
     }
 
-    public func startSync() async throws {
+    public func start() async throws {
         guard let client = clientProvider() else {
             throw NebError.notLoggedIn
         }
@@ -52,23 +55,25 @@ public final class MatrixSyncAdapter: SyncProtocol, @unchecked Sendable {
 
         logger.info("Sync service starting...")
         await sync.start()
+        isOnline = true
+        for (_, c) in statusContinuations { c.yield(true) }
         logger.info("Sync service started")
     }
 
-    public func stopSync() async throws {
+    public func stop() async throws {
         await syncService?.stop()
+        isOnline = false
+        for (_, c) in statusContinuations { c.yield(false) }
     }
 
-    public func roomListStream() -> AsyncStream<[NebRoom]> {
+    public func statusStream() -> AsyncStream<Bool> {
         let id = UUID()
         return AsyncStream { continuation in
-            self.continuations[id] = continuation
+            self.statusContinuations[id] = continuation
             continuation.onTermination = { _ in
-                self.continuations.removeValue(forKey: id)
+                self.statusContinuations.removeValue(forKey: id)
             }
-            if !self.latestNebRooms.isEmpty {
-                continuation.yield(self.latestNebRooms)
-            }
+            continuation.yield(self.isOnline)
         }
     }
 
@@ -104,36 +109,37 @@ public final class MatrixSyncAdapter: SyncProtocol, @unchecked Sendable {
             }
         }
 
-        if self.rooms.count != self.latestNebRooms.count {
-            logger.info("Room list updated: \(self.rooms.count) rooms")
-        }
+        logger.info("Room list updated: \(self.rooms.count) rooms")
 
         emitWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            self.convertAndEmit()
+            self.convertAndWriteToDatabase()
         }
         emitWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: workItem)
     }
 
-    private func convertAndEmit() {
+    private func convertAndWriteToDatabase() {
         let snapshot = rooms
         Task {
-            var nebRooms: [NebRoom] = []
+            var currentRoomIDs: Set<String> = []
             for room in snapshot {
                 let roomID = room.id()
+                currentRoomIDs.insert(roomID)
                 let name = room.displayName() ?? roomID
 
                 var isDirect = false
                 var unread: UInt64 = 0
                 var directUserID: String? = nil
                 var avatarURL: String? = nil
+                var memberCount: UInt64 = 0
                 do {
                     let info = try await room.roomInfo()
                     isDirect = info.isDirect
                     unread = max(info.numUnreadMessages, info.numUnreadNotifications)
                     avatarURL = info.avatarUrl
+                    memberCount = info.activeMembersCount
 
                     if isDirect {
                         let myUserID = try? self.clientProvider()?.userId()
@@ -155,38 +161,26 @@ public final class MatrixSyncAdapter: SyncProtocol, @unchecked Sendable {
                     logger.warning("Failed to get room info for \(roomID): \(error.localizedDescription)")
                 }
 
-                nebRooms.append(NebRoom(
-                    id: roomID,
+                let record = RoomRecord(
+                    roomID: roomID,
                     name: name,
                     avatarURL: avatarURL,
-                    lastMessage: nil,
-                    lastMessageTimestamp: nil,
-                    unreadCount: UInt(unread),
+                    unreadCount: Int(unread),
                     isDirect: isDirect,
                     directUserID: directUserID,
-                    memberCount: 0
-                ))
+                    memberCount: Int(memberCount)
+                )
+                try? database.upsertRoom(record)
             }
 
-            logger.info("Emitting \(nebRooms.count) rooms to \(self.continuations.count) listeners")
-            self.latestNebRooms = nebRooms
-            for (_, continuation) in self.continuations {
-                continuation.yield(nebRooms)
+            // Remove rooms that are no longer in the list
+            let removedIDs = self.knownRoomIDs.subtracting(currentRoomIDs)
+            for roomID in removedIDs {
+                try? self.database.deleteRoom(roomID: roomID)
             }
-        }
-    }
-}
+            self.knownRoomIDs = currentRoomIDs
 
-public enum NebError: Error, LocalizedError {
-    case notLoggedIn
-    case roomNotFound(String)
-    case recoveryFailed(String)
-
-    public var errorDescription: String? {
-        switch self {
-        case .notLoggedIn: return "Not logged in"
-        case .roomNotFound(let id): return "Room not found: \(id)"
-        case .recoveryFailed(let message): return message
+            logger.info("Wrote \(currentRoomIDs.count) rooms to database")
         }
     }
 }
