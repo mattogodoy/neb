@@ -12,6 +12,7 @@
 		49DF8E2527EB9AF7AD5F79DF /* ContactVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5217C2605D6443D4E97BC0E /* ContactVerificationView.swift */; };
 		59697A975D71E671E8811F59 /* EmojiPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4694CCD8FCDB113FA519BAB /* EmojiPickerView.swift */; };
 		5FCCBE4E5CC742BAD819F61C /* NebCore in Frameworks */ = {isa = PBXBuildFile; productRef = D655DA2A5A3350417BA89546 /* NebCore */; };
+		6B994CD079433D8C283EA500 /* HTMLRenderCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = F81717C619AAEC1806C86373 /* HTMLRenderCache.swift */; };
 		7B0EB0332324DE102076B0A2 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */; };
 		838E4CB92918FF5E08FFD52B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82C30D683D99BE5A348941CF /* LoginView.swift */; };
 		83B57EBDD68462EB939E6D99 /* MessageComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB5117145C530E7DD757276 /* MessageComposerView.swift */; };
@@ -56,6 +57,7 @@
 		D4A9A42E9CEF2F2E33992366 /* Neb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Neb.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA30A616BFE2CBE3A04EF182 /* TypingIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingIndicatorView.swift; sourceTree = "<group>"; };
 		F5217C2605D6443D4E97BC0E /* ContactVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactVerificationView.swift; sourceTree = "<group>"; };
+		F81717C619AAEC1806C86373 /* HTMLRenderCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLRenderCache.swift; sourceTree = "<group>"; };
 		F8D7E64765408BD975A8E614 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		FA124BC3A057C6747E22FE0E /* MessageBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubbleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -112,6 +114,7 @@
 				C5F865AEBE26F67E8EC78563 /* AvatarView.swift */,
 				B4D5E9AC5A26021C1D0E531F /* EmojiData.swift */,
 				B4694CCD8FCDB113FA519BAB /* EmojiPickerView.swift */,
+				F81717C619AAEC1806C86373 /* HTMLRenderCache.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -235,6 +238,7 @@
 				D330E098B0737A7D6433C45B /* EmojiData.swift in Sources */,
 				59697A975D71E671E8811F59 /* EmojiPickerView.swift in Sources */,
 				FFBE67B8E317BC8AAFC0453F /* FormattingToolbarView.swift in Sources */,
+				6B994CD079433D8C283EA500 /* HTMLRenderCache.swift in Sources */,
 				838E4CB92918FF5E08FFD52B /* LoginView.swift in Sources */,
 				938932BD820913837BC31EC9 /* MainView.swift in Sources */,
 				998F5A21992C15BE79A12299 /* MessageBubbleView.swift in Sources */,

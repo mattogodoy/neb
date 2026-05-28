@@ -8,7 +8,12 @@ private let logger = Logger(subsystem: "com.neb.app", category: "Room")
 public final class Room: RoomProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private let roomListServiceProvider: () -> RoomListService?
-    private var activeTimelines: [String: TimelineHandle] = [:]
+    private let lock = NSLock()
+    private var activeTimeline: (roomID: String, handle: TimelineHandle)?
+    private var cachedTimelines: [String: TimelineHandle] = [:]
+    private var cacheOrder: [String] = []
+    private let maxCachedTimelines = 5
+    private var setupGeneration: UInt64 = 0
 
     public init(clientProvider: @escaping () -> Client?, roomListServiceProvider: @escaping () -> RoomListService?) {
         self.clientProvider = clientProvider
@@ -16,14 +21,41 @@ public final class Room: RoomProtocol, @unchecked Sendable {
     }
 
     public func timelineStream(roomID: String) -> AsyncStream<[NebMessage]> {
-        activeTimelines.removeValue(forKey: roomID)
+        lock.lock()
+        setupGeneration &+= 1
+        let myGeneration = setupGeneration
+
+        if let active = activeTimeline, active.roomID != roomID {
+            active.handle.listener.detachContinuation()
+            cachedTimelines[active.roomID] = active.handle
+            cacheOrder.removeAll { $0 == active.roomID }
+            cacheOrder.append(active.roomID)
+            evictIfNeeded()
+            activeTimeline = nil
+        }
+
+        if let cached = cachedTimelines.removeValue(forKey: roomID) {
+            cacheOrder.removeAll { $0 == roomID }
+            activeTimeline = (roomID: roomID, handle: cached)
+            lock.unlock()
+            logger.info("Timeline cache hit for \(roomID)")
+
+            return AsyncStream { continuation in
+                cached.listener.attachContinuation(continuation)
+            }
+        }
+        lock.unlock()
 
         return AsyncStream { [weak self] continuation in
-            guard let self else { return }
+            guard let self else {
+                continuation.finish()
+                return
+            }
 
             Task {
                 guard let client = self.clientProvider() else {
                     logger.error("timelineStream: not logged in")
+                    continuation.finish()
                     return
                 }
                 if let rls = self.roomListServiceProvider() {
@@ -35,13 +67,33 @@ public final class Room: RoomProtocol, @unchecked Sendable {
                     }
                 }
 
-                guard let room = try? client.getRoom(roomId: roomID) else {
-                    logger.error("timelineStream: room \(roomID) not found")
+                guard self.isCurrentGeneration(myGeneration) else {
+                    logger.info("timelineStream: setup for \(roomID) cancelled by newer switch")
+                    continuation.finish()
                     return
                 }
 
-                let timeline = try await room.timeline()
+                guard let room = try? client.getRoom(roomId: roomID) else {
+                    logger.error("timelineStream: room \(roomID) not found")
+                    continuation.finish()
+                    return
+                }
+
+                let timeline: Timeline
+                do {
+                    timeline = try await room.timeline()
+                } catch {
+                    logger.error("timelineStream: failed to get timeline for \(roomID): \(error)")
+                    continuation.finish()
+                    return
+                }
                 let myUserID = (try? client.userId()) ?? ""
+
+                guard self.isCurrentGeneration(myGeneration) else {
+                    logger.info("timelineStream: setup for \(roomID) cancelled by newer switch")
+                    continuation.finish()
+                    return
+                }
 
                 let listener = NebTimelineListener(
                     roomID: roomID,
@@ -49,29 +101,63 @@ public final class Room: RoomProtocol, @unchecked Sendable {
                     continuation: continuation
                 )
 
-                if let members = try? await room.membersNoSync() {
-                    while let chunk = members.nextChunk(chunkSize: 50) {
-                        for member in chunk {
-                            listener.cacheProfile(
-                                userID: member.userId,
-                                name: member.displayName ?? member.userId,
-                                avatarURL: member.avatarUrl
-                            )
-                        }
-                    }
-                }
-
                 let listenerHandle = await timeline.addListener(listener: listener)
 
-                self.activeTimelines[roomID] = TimelineHandle(
+                let handle = TimelineHandle(
                     room: room,
                     timeline: timeline,
                     listener: listener,
                     listenerHandle: listenerHandle
                 )
 
+                self.tryCommitActiveTimeline(roomID: roomID, handle: handle, generation: myGeneration)
+
                 logger.info("Timeline listener active for \(roomID)")
                 let _ = try? await timeline.paginateBackwards(numEvents: 50)
+
+                Task {
+                    if let members = try? await room.membersNoSync() {
+                        while let chunk = members.nextChunk(chunkSize: 50) {
+                            for member in chunk {
+                                listener.cacheProfile(
+                                    userID: member.userId,
+                                    name: member.displayName ?? member.userId,
+                                    avatarURL: member.avatarUrl
+                                )
+                            }
+                        }
+                        listener.refreshMessages()
+                    }
+                }
+            }
+        }
+    }
+
+    private func isCurrentGeneration(_ generation: UInt64) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return setupGeneration == generation
+    }
+
+    private func tryCommitActiveTimeline(roomID: String, handle: TimelineHandle, generation: UInt64) {
+        lock.lock()
+        if setupGeneration == generation {
+            activeTimeline = (roomID: roomID, handle: handle)
+        } else {
+            cachedTimelines[roomID] = handle
+            cacheOrder.removeAll { $0 == roomID }
+            cacheOrder.append(roomID)
+            evictIfNeeded()
+            handle.listener.detachContinuation()
+        }
+        lock.unlock()
+    }
+
+    private func evictIfNeeded() {
+        while cachedTimelines.count > maxCachedTimelines {
+            if let oldest = cacheOrder.first {
+                cacheOrder.removeFirst()
+                cachedTimelines.removeValue(forKey: oldest)
             }
         }
     }
@@ -112,21 +198,30 @@ public final class Room: RoomProtocol, @unchecked Sendable {
     }
 
     public func paginateBackwards(roomID: String, count: UInt) async throws {
-        guard let handle = activeTimelines[roomID] else { throw NebError.roomNotFound(roomID) }
+        guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
         let _ = try await handle.timeline.paginateBackwards(numEvents: UInt16(min(count, UInt(UInt16.max))))
     }
 
     public func toggleReaction(roomID: String, eventID: String, emoji: String) async throws {
-        guard let handle = activeTimelines[roomID] else { throw NebError.roomNotFound(roomID) }
+        guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
         let itemID: EventOrTransactionId = .eventId(eventId: eventID)
         let _ = try await handle.timeline.toggleReaction(itemId: itemID, key: emoji)
     }
 
     public func editMessage(roomID: String, eventID: String, newBody: String) async throws {
-        guard let handle = activeTimelines[roomID] else { throw NebError.roomNotFound(roomID) }
+        guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
         let itemID: EventOrTransactionId = .eventId(eventId: eventID)
         let content = messageEventContentFromMarkdown(md: newBody)
         try await handle.timeline.edit(eventOrTransactionId: itemID, newContent: .roomMessage(content: content))
+    }
+
+    private func timelineHandle(for roomID: String) -> TimelineHandle? {
+        lock.lock()
+        defer { lock.unlock() }
+        if let active = activeTimeline, active.roomID == roomID {
+            return active.handle
+        }
+        return cachedTimelines[roomID]
     }
 }
 
@@ -140,7 +235,8 @@ private struct TimelineHandle {
 private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
     private let roomID: String
     private let myUserID: String
-    private let continuation: AsyncStream<[NebMessage]>.Continuation
+    private let lock = NSLock()
+    nonisolated(unsafe) private var continuation: AsyncStream<[NebMessage]>.Continuation?
     nonisolated(unsafe) private var items: [TimelineItem] = []
     nonisolated(unsafe) private var profileCache: [String: (name: String, avatarURL: String?)] = [:]
 
@@ -150,11 +246,38 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         self.continuation = continuation
     }
 
+    func attachContinuation(_ newContinuation: AsyncStream<[NebMessage]>.Continuation) {
+        lock.lock()
+        continuation = newContinuation
+        let messages = items.compactMap { convertItem($0) }
+        lock.unlock()
+        newContinuation.yield(messages)
+    }
+
+    func detachContinuation() {
+        lock.lock()
+        let old = continuation
+        continuation = nil
+        lock.unlock()
+        old?.finish()
+    }
+
+    func refreshMessages() {
+        lock.lock()
+        let cont = continuation
+        let messages = items.compactMap { convertItem($0) }
+        lock.unlock()
+        cont?.yield(messages)
+    }
+
     func cacheProfile(userID: String, name: String, avatarURL: String?) {
+        lock.lock()
         profileCache[userID] = (name: name, avatarURL: avatarURL)
+        lock.unlock()
     }
 
     func onUpdate(diff: [TimelineDiff]) {
+        lock.lock()
         for d in diff {
             switch d {
             case .append(let values):
@@ -186,35 +309,14 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             }
         }
 
-        if !items.isEmpty {
-            var eventCount = 0
-            var virtualCount = 0
-            var msgCount = 0
-            var encryptedCount = 0
-            var otherContentTypes: [String] = []
-            for item in items {
-                if let event = item.asEvent() {
-                    eventCount += 1
-                    switch event.content {
-                    case .msgLike(let ml):
-                        switch ml.kind {
-                        case .message: msgCount += 1
-                        case .unableToDecrypt: encryptedCount += 1
-                        default: otherContentTypes.append("msgLike-other")
-                        }
-                    default:
-                        otherContentTypes.append(String(describing: event.content).prefix(40).description)
-                    }
-                } else {
-                    virtualCount += 1
-                }
-            }
-            logger.info("Timeline \(self.roomID) raw: \(self.items.count) items, \(eventCount) events, \(msgCount) msg, \(encryptedCount) encrypted, \(virtualCount) virtual, other: \(otherContentTypes.joined(separator: ","))")
-        }
-
+        let cont = continuation
         let messages = items.compactMap { convertItem($0) }
-        logger.info("Timeline \(self.roomID): \(messages.count) messages")
-        continuation.yield(messages)
+        lock.unlock()
+
+        if let cont {
+            logger.info("Timeline \(self.roomID): \(messages.count) messages")
+            cont.yield(messages)
+        }
     }
 
     private func convertItem(_ item: TimelineItem) -> NebMessage? {
@@ -307,7 +409,8 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             readReceipts: readReceipts,
             reactions: reactions,
             isEdited: isEdited,
-            isEditable: event.isEditable && event.isOwn
+            isEditable: event.isEditable && event.isOwn,
+            isEmojiOnly: body.isEmojiOnly
         )
     }
 }

@@ -2,10 +2,6 @@ import SwiftUI
 import AppKit
 import NebCore
 
-enum MessageGroupPosition {
-    case alone, first, middle, last
-}
-
 struct MessageBubbleView: View {
     let message: NebMessage
     let groupPosition: MessageGroupPosition
@@ -22,20 +18,17 @@ struct MessageBubbleView: View {
 
     private var isFirst: Bool { groupPosition == .first || groupPosition == .alone }
     private var isLast: Bool { groupPosition == .last || groupPosition == .alone }
-    private var isEmojiOnly: Bool { message.body.isEmojiOnly }
+    private var isEmojiOnly: Bool { message.isEmojiOnly }
 
     private var renderedBody: Text {
-        if let attributed = HTMLRenderer.render(message.formattedBody) {
+        if let attributed = HTMLRenderCache.shared.render(message.formattedBody) {
             return Text(attributed)
         }
         return Text(message.body)
     }
 
     private var renderedBodyOutgoing: Text {
-        if let attributed = HTMLRenderer.render(
-            message.formattedBody,
-            foregroundColor: NSColor.white
-        ) {
+        if let attributed = HTMLRenderCache.shared.render(message.formattedBody, foregroundColor: .white) {
             return Text(attributed)
         }
         return Text(message.body)
@@ -321,12 +314,6 @@ private struct BubbleShape: Shape {
     }
 }
 
-extension String {
-    var isEmojiOnly: Bool {
-        guard !isEmpty && count <= 3 else { return false }
-        return allSatisfy { $0.isEmoji }
-    }
-}
 
 private struct RightClickHandler: NSViewRepresentable {
     let onRightClick: () -> Void
@@ -356,12 +343,5 @@ private class ContextMenuTarget: NSObject {
 
     @objc func editMessage() {
         onEdit?()
-    }
-}
-
-private extension Character {
-    var isEmoji: Bool {
-        guard let scalar = unicodeScalars.first else { return false }
-        return scalar.properties.isEmoji && scalar.value > 0x23
     }
 }

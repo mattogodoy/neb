@@ -8,6 +8,7 @@ private let logger = Logger(subsystem: "com.neb.app", category: "Timeline")
 @Observable
 public final class TimelineViewModel {
     public private(set) var messages: [NebMessage] = []
+    public private(set) var messageLayouts: [String: MessageLayout] = [:]
     public private(set) var typingUsers: [NebUser] = []
     public private(set) var isLoadingMore = false
     public private(set) var hasLoadedInitialTimeline = false
@@ -138,9 +139,57 @@ public final class TimelineViewModel {
             for await messages in self.roomService.timelineStream(roomID: self.roomID) {
                 guard !Task.isCancelled else { break }
                 self.messages = messages
+                self.messageLayouts = Self.computeLayouts(for: messages)
                 self.hasLoadedInitialTimeline = true
             }
         }
+    }
+
+    private static func computeLayouts(for messages: [NebMessage]) -> [String: MessageLayout] {
+        var layouts: [String: MessageLayout] = [:]
+        layouts.reserveCapacity(messages.count)
+        for i in messages.indices {
+            let msg = messages[i]
+            let prev: NebMessage? = i > 0 ? messages[i - 1] : nil
+            let next: NebMessage? = i < messages.count - 1 ? messages[i + 1] : nil
+
+            let isFirst = isFirstInGroup(current: msg, previous: prev)
+            let isLast = isLastInGroup(current: msg, next: next)
+
+            let position: MessageGroupPosition
+            switch (isFirst, isLast) {
+            case (true, true): position = .alone
+            case (true, false): position = .first
+            case (false, true): position = .last
+            case (false, false): position = .middle
+            }
+
+            let showDay: Bool
+            if let prev {
+                showDay = !Calendar.current.isDate(prev.timestamp, inSameDayAs: msg.timestamp)
+            } else {
+                showDay = true
+            }
+
+            layouts[msg.id] = MessageLayout(groupPosition: position, showDaySeparator: showDay)
+        }
+        return layouts
+    }
+
+    private static func isFirstInGroup(current: NebMessage, previous: NebMessage?) -> Bool {
+        guard let prev = previous else { return true }
+        if prev.senderID != current.senderID { return true }
+        if current.timestamp.timeIntervalSince(prev.timestamp) > 300 { return true }
+        if !Calendar.current.isDate(prev.timestamp, inSameDayAs: current.timestamp) { return true }
+        return false
+    }
+
+    private static func isLastInGroup(current: NebMessage, next: NebMessage?) -> Bool {
+        guard let next = next else { return true }
+        if next.senderID != current.senderID { return true }
+        if next.timestamp.timeIntervalSince(current.timestamp) > 300 { return true }
+        if !Calendar.current.isDate(next.timestamp, inSameDayAs: current.timestamp) { return true }
+        return false
     }
 
     private func startTypingObserving() {

@@ -18,6 +18,20 @@ public struct ReadReceipt: Equatable, Sendable {
     }
 }
 
+public enum MessageGroupPosition: Sendable {
+    case alone, first, middle, last
+}
+
+public struct MessageLayout: Sendable, Equatable {
+    public let groupPosition: MessageGroupPosition
+    public let showDaySeparator: Bool
+
+    public init(groupPosition: MessageGroupPosition, showDaySeparator: Bool) {
+        self.groupPosition = groupPosition
+        self.showDaySeparator = showDaySeparator
+    }
+}
+
 public struct NebMessage: Identifiable, Equatable, Sendable {
     public let id: String
     public let roomID: String
@@ -33,6 +47,7 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
     public var reactions: [NebReaction]
     public var isEdited: Bool
     public var isEditable: Bool
+    public var isEmojiOnly: Bool
 
     public init(
         id: String,
@@ -48,7 +63,8 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         readReceipts: [ReadReceipt] = [],
         reactions: [NebReaction] = [],
         isEdited: Bool = false,
-        isEditable: Bool = false
+        isEditable: Bool = false,
+        isEmojiOnly: Bool = false
     ) {
         self.id = id
         self.roomID = roomID
@@ -64,5 +80,20 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         self.reactions = reactions
         self.isEdited = isEdited
         self.isEditable = isEditable
+        self.isEmojiOnly = isEmojiOnly
+    }
+}
+
+extension String {
+    public var isEmojiOnly: Bool {
+        guard !isEmpty && count <= 3 else { return false }
+        return allSatisfy { $0.isEmoji }
+    }
+}
+
+extension Character {
+    public var isEmoji: Bool {
+        guard let scalar = unicodeScalars.first else { return false }
+        return scalar.properties.isEmoji && scalar.value > 0x23
     }
 }
