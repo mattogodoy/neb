@@ -4,7 +4,7 @@ import NebCore
 struct MainView: View {
     @Bindable var roomListViewModel: RoomListViewModel
     let roomServiceProvider: () -> any RoomProtocol
-    var cryptoServiceProvider: (() -> any CryptoProtocol)?
+    var privacyServiceProvider: (() -> any PrivacyProtocol)?
     var typingServiceProvider: (() -> any TypingProtocol)?
     var currentUserID: String?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
@@ -30,7 +30,7 @@ struct MainView: View {
                     viewModel: vm,
                     roomName: room.name,
                     directUserID: room.directUserID,
-                    cryptoServiceProvider: cryptoServiceProvider,
+                    privacyServiceProvider: privacyServiceProvider,
                     isDM: room.isDirect,
                     homeserverURL: homeserverURL
                 )
@@ -95,11 +95,11 @@ struct MainView: View {
             )
         }
         .sheet(isPresented: $showDeviceVerification) {
-            if let provider = cryptoServiceProvider {
+            if let provider = privacyServiceProvider {
                 DeviceVerificationView(
-                    viewModel: VerificationViewModel(cryptoService: provider()),
+                    viewModel: VerificationViewModel(privacyService: provider()),
                     isAlreadyVerified: deviceVerificationStatus == .verified,
-                    cryptoService: provider()
+                    privacyService: provider()
                 )
             }
         }

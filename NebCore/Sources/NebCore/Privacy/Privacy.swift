@@ -2,16 +2,14 @@ import Foundation
 import MatrixRustSDK
 import os
 
-private let logger = Logger(subsystem: "com.neb.app", category: "Crypto")
+private let logger = Logger(subsystem: "com.neb.app", category: "Privacy")
 
-public final class MatrixCryptoAdapter: CryptoProtocol, @unchecked Sendable {
+public final class Privacy: PrivacyProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private var controller: SessionVerificationController?
-    private var delegate: VerificationDelegate?
+    private var delegate: VerificationDelegateImpl?
     private var continuation: AsyncStream<VerificationState>.Continuation?
     private var pendingRequest: SessionVerificationRequestDetails?
-    private var verificationStateHandle: TaskHandle?
-    private var deviceVerificationListener: DeviceVerificationStateListener?
 
     public init(clientProvider: @escaping () -> Client?) {
         self.clientProvider = clientProvider
@@ -22,7 +20,7 @@ public final class MatrixCryptoAdapter: CryptoProtocol, @unchecked Sendable {
         let ctrl = try await client.getSessionVerificationController()
         self.controller = ctrl
 
-        let del = VerificationDelegate { [weak self] state in
+        let del = VerificationDelegateImpl { [weak self] state in
             logger.info("Verification state: \(String(describing: state))")
             self?.continuation?.yield(state)
         } onRequest: { [weak self] details in
@@ -100,24 +98,6 @@ public final class MatrixCryptoAdapter: CryptoProtocol, @unchecked Sendable {
         }
     }
 
-    public func deviceVerificationStatusStream() -> AsyncStream<DeviceVerificationStatus> {
-        AsyncStream { continuation in
-            guard let client = clientProvider() else {
-                continuation.yield(.unknown)
-                return
-            }
-            let encryption = client.encryption()
-            let initial = encryption.verificationState()
-            continuation.yield(Self.mapVerificationState(initial))
-
-            let listener = DeviceVerificationStateListener { state in
-                continuation.yield(Self.mapVerificationState(state))
-            }
-            self.verificationStateHandle = encryption.verificationStateListener(listener: listener)
-            self.deviceVerificationListener = listener
-        }
-    }
-
     public func isUserVerified(userID: String) async -> Bool {
         guard let client = clientProvider() else { return false }
         do {
@@ -156,17 +136,9 @@ public final class MatrixCryptoAdapter: CryptoProtocol, @unchecked Sendable {
         await encryption.waitForE2eeInitializationTasks()
         logger.info("E2EE initialization complete")
     }
-
-    private static func mapVerificationState(_ state: MatrixRustSDK.VerificationState) -> DeviceVerificationStatus {
-        switch state {
-        case .verified: return .verified
-        case .unverified: return .unverified
-        case .unknown: return .unknown
-        }
-    }
 }
 
-private final class VerificationDelegate: SessionVerificationControllerDelegate, @unchecked Sendable {
+private final class VerificationDelegateImpl: SessionVerificationControllerDelegate, @unchecked Sendable {
     private let onStateChange: (VerificationState) -> Void
     private let onRequest: (SessionVerificationRequestDetails) -> Void
     weak var controller: SessionVerificationController?
@@ -194,9 +166,7 @@ private final class VerificationDelegate: SessionVerificationControllerDelegate,
         }
     }
 
-    func didStartSasVerification() {
-        // Emoji data will follow in didReceiveVerificationData
-    }
+    func didStartSasVerification() {}
 
     func didReceiveVerificationData(data: SessionVerificationData) {
         switch data {
@@ -221,17 +191,5 @@ private final class VerificationDelegate: SessionVerificationControllerDelegate,
 
     func didFinish() {
         onStateChange(.confirmed)
-    }
-}
-
-private final class DeviceVerificationStateListener: MatrixRustSDK.VerificationStateListener, @unchecked Sendable {
-    private let handler: (MatrixRustSDK.VerificationState) -> Void
-
-    init(handler: @escaping (MatrixRustSDK.VerificationState) -> Void) {
-        self.handler = handler
-    }
-
-    func onUpdate(status: MatrixRustSDK.VerificationState) {
-        handler(status)
     }
 }

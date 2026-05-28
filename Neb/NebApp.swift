@@ -25,7 +25,7 @@ struct NebApp: App {
                             MainView(
                                 roomListViewModel: roomListVM,
                                 roomServiceProvider: { appState.makeRoomService() },
-                                cryptoServiceProvider: { appState.makeCryptoService() },
+                                privacyServiceProvider: { appState.makePrivacyService() },
                                 typingServiceProvider: { appState.makeTypingService() },
                                 currentUserID: appState.currentUserID,
                                 deviceVerificationStatus: appState.deviceVerificationStatus,

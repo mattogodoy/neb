@@ -5,7 +5,7 @@ struct TimelineView: View {
     @Bindable var viewModel: TimelineViewModel
     let roomName: String
     var directUserID: String?
-    var cryptoServiceProvider: (() -> any CryptoProtocol)?
+    var privacyServiceProvider: (() -> any PrivacyProtocol)?
     var isDM: Bool = false
     var homeserverURL: String = ""
     @State private var showVerification = false
@@ -92,7 +92,7 @@ struct TimelineView: View {
         }
         .navigationTitle(roomName)
         .toolbar {
-            if let _ = directUserID, cryptoServiceProvider != nil {
+            if let _ = directUserID, privacyServiceProvider != nil {
                 ToolbarItem {
                     Button(action: { showVerification = true }) {
                         Label(
@@ -105,12 +105,12 @@ struct TimelineView: View {
             }
         }
         .sheet(isPresented: $showVerification) {
-            if let provider = cryptoServiceProvider, let userID = directUserID {
+            if let provider = privacyServiceProvider, let userID = directUserID {
                 ContactVerificationView(
-                    viewModel: VerificationViewModel(cryptoService: provider()),
+                    viewModel: VerificationViewModel(privacyService: provider()),
                     userID: userID,
                     displayName: roomName,
-                    cryptoService: provider()
+                    privacyService: provider()
                 )
             }
         }
@@ -215,7 +215,7 @@ struct TimelineView: View {
     }
 
     private func checkContactVerification() async {
-        guard let userID = directUserID, let provider = cryptoServiceProvider else { return }
+        guard let userID = directUserID, let provider = privacyServiceProvider else { return }
         isContactVerified = await provider().isUserVerified(userID: userID)
     }
 

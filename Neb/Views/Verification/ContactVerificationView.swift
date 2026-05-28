@@ -5,7 +5,7 @@ struct ContactVerificationView: View {
     @Bindable var viewModel: VerificationViewModel
     let userID: String
     let displayName: String
-    var cryptoService: (any CryptoProtocol)?
+    var privacyService: (any PrivacyProtocol)?
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirming = false
     @State private var isAlreadyVerified = false
@@ -41,7 +41,7 @@ struct ContactVerificationView: View {
         .padding(32)
         .frame(minWidth: 440, minHeight: 300)
         .task {
-            isAlreadyVerified = await cryptoService?.isUserVerified(userID: userID) ?? false
+            isAlreadyVerified = await privacyService?.isUserVerified(userID: userID) ?? false
             isCheckingStatus = false
         }
     }

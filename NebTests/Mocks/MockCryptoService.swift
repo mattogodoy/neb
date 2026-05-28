@@ -1,7 +1,7 @@
 import Foundation
 import NebCore
 
-final class MockCryptoService: CryptoProtocol, @unchecked Sendable {
+final class MockPrivacyService: PrivacyProtocol, @unchecked Sendable {
     var currentState: VerificationState = .idle
     private var stateContinuation: AsyncStream<VerificationState>.Continuation?
 
@@ -41,12 +41,6 @@ final class MockCryptoService: CryptoProtocol, @unchecked Sendable {
         AsyncStream { continuation in
             self.stateContinuation = continuation
             continuation.yield(self.currentState)
-        }
-    }
-
-    func deviceVerificationStatusStream() -> AsyncStream<DeviceVerificationStatus> {
-        AsyncStream { continuation in
-            continuation.yield(.unverified)
         }
     }
 
