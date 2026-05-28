@@ -73,29 +73,32 @@ final class AppState {
 
         Task { [weak self] in
             guard let self else { return }
+            var hasSetupVerification = false
+            var hasStartedBackfill = false
             for await online in self.sync.statusStream() {
                 self.isOnline = online
                 if online {
                     await self.flushPendingMessages()
+                    if !hasSetupVerification {
+                        hasSetupVerification = true
+                        do { try await self.securityAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
+                    }
+                    if !hasStartedBackfill {
+                        hasStartedBackfill = true
+                        for await rooms in self.roomAdapter.roomListStream() {
+                            let roomIDs = rooms.map { $0.id }
+                            self.backfillWorker.start(roomIDs: roomIDs)
+                            break
+                        }
+                    }
                 }
             }
         }
-
-        do { try await securityAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
 
         Task { [weak self] in
             guard let self else { return }
             for await status in self.devicesAdapter.verificationStatusStream() {
                 self.deviceVerificationStatus = status
-            }
-        }
-
-        Task { [weak self] in
-            guard let self else { return }
-            for await rooms in self.roomAdapter.roomListStream() {
-                let roomIDs = rooms.map { $0.id }
-                self.backfillWorker.start(roomIDs: roomIDs)
-                break
             }
         }
     }
