@@ -16,15 +16,15 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 }
 
 @Test func timelineInitialStateIsEmpty() async {
-    let roomService = MockRoomService()
-    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+    let timelineService = MockTimelineService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: timelineService)
     let messages = await vm.messages
     #expect(messages.isEmpty)
 }
 
 @Test func recordsInitialTimelineLoad() async throws {
-    let roomService = MockRoomService()
-    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+    let timelineService = MockTimelineService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: timelineService)
 
     try await Task.sleep(for: .milliseconds(50))
 
@@ -32,10 +32,10 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 }
 
 @Test func receivesMessages() async throws {
-    let roomService = MockRoomService()
-    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+    let timelineService = MockTimelineService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: timelineService)
 
-    roomService.emitMessages(roomID: "!room:x", messages: [
+    timelineService.emitMessages(roomID: "!room:x", messages: [
         makeMessage(id: "1", body: "Hello"),
         makeMessage(id: "2", body: "World"),
     ])
@@ -48,10 +48,10 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 }
 
 @Test func receivesMessagesWithoutAutomaticallyMarkingRead() async throws {
-    let roomService = MockRoomService()
-    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+    let timelineService = MockTimelineService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: timelineService)
 
-    roomService.emitMessages(roomID: "!room:x", messages: [
+    timelineService.emitMessages(roomID: "!room:x", messages: [
         makeMessage(id: "evt-1", body: "Hello"),
         makeMessage(id: "evt-2", body: "World"),
     ])
@@ -59,14 +59,14 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
     try await Task.sleep(for: .milliseconds(50))
 
     #expect(await vm.messages.count == 2)
-    #expect(roomService.readReceipts.isEmpty)
+    #expect(timelineService.markedAsRead.isEmpty)
 }
 
 @Test func sendsReadReceiptForLastMessage() async throws {
-    let roomService = MockRoomService()
-    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+    let timelineService = MockTimelineService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: timelineService)
 
-    roomService.emitMessages(roomID: "!room:x", messages: [
+    timelineService.emitMessages(roomID: "!room:x", messages: [
         makeMessage(id: "evt-1", body: "Hello"),
         makeMessage(id: "evt-2", body: "World"),
     ])
@@ -74,35 +74,35 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
     try await Task.sleep(for: .milliseconds(50))
     await vm.markAsRead()
 
-    #expect(roomService.readReceipts.last?.eventID == "evt-2")
+    #expect(timelineService.markedAsRead.last == "!room:x")
 }
 
 @Test func sendMessageAppendsLocally() async throws {
-    let roomService = MockRoomService()
-    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+    let timelineService = MockTimelineService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: timelineService)
 
     await vm.sendMessage("Hello!")
 
-    #expect(roomService.sentMessages.count == 1)
-    #expect(roomService.sentMessages.first?.body == "Hello!")
+    #expect(timelineService.sentMessages.count == 1)
+    #expect(timelineService.sentMessages.first?.body == "Hello!")
 }
 
 @Test func emptyMessageNotSent() async {
-    let roomService = MockRoomService()
-    let vm = await TimelineViewModel(roomID: "!room:x", roomService: roomService)
+    let timelineService = MockTimelineService()
+    let vm = await TimelineViewModel(roomID: "!room:x", roomService: timelineService)
 
     await vm.sendMessage("")
     await vm.sendMessage("   ")
 
-    #expect(roomService.sentMessages.isEmpty)
+    #expect(timelineService.sentMessages.isEmpty)
 }
 
 @Test func receivesTypingUsers() async throws {
-    let roomService = MockRoomService()
+    let timelineService = MockTimelineService()
     let typingService = MockTypingService()
     let vm = await TimelineViewModel(
         roomID: "!room:x",
-        roomService: roomService,
+        roomService: timelineService,
         typingService: typingService,
         currentUserID: "@me:x"
     )
@@ -120,11 +120,11 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 }
 
 @Test func filtersOutCurrentUser() async throws {
-    let roomService = MockRoomService()
+    let timelineService = MockTimelineService()
     let typingService = MockTypingService()
     let vm = await TimelineViewModel(
         roomID: "!room:x",
-        roomService: roomService,
+        roomService: timelineService,
         typingService: typingService,
         currentUserID: "@me:x"
     )
@@ -143,11 +143,11 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 }
 
 @Test func sendsTypingNoticeOnComposerChange() async throws {
-    let roomService = MockRoomService()
+    let timelineService = MockTimelineService()
     let typingService = MockTypingService()
     let vm = await TimelineViewModel(
         roomID: "!room:x",
-        roomService: roomService,
+        roomService: timelineService,
         typingService: typingService,
         currentUserID: "@me:x"
     )
@@ -160,11 +160,11 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 }
 
 @Test func sendsStopTypingOnSend() async throws {
-    let roomService = MockRoomService()
+    let timelineService = MockTimelineService()
     let typingService = MockTypingService()
     let vm = await TimelineViewModel(
         roomID: "!room:x",
-        roomService: roomService,
+        roomService: timelineService,
         typingService: typingService,
         currentUserID: "@me:x"
     )
@@ -182,11 +182,11 @@ private func makeMessage(id: String, body: String, isOutgoing: Bool = false) -> 
 }
 
 @Test func doesNotSendTypingForEmptyText() async throws {
-    let roomService = MockRoomService()
+    let timelineService = MockTimelineService()
     let typingService = MockTypingService()
     let vm = await TimelineViewModel(
         roomID: "!room:x",
-        roomService: roomService,
+        roomService: timelineService,
         typingService: typingService,
         currentUserID: "@me:x"
     )

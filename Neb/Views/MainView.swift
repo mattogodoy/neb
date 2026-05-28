@@ -3,7 +3,8 @@ import NebCore
 
 struct MainView: View {
     @Bindable var roomListViewModel: RoomListViewModel
-    let roomServiceProvider: () -> any RoomProtocol
+    let timelineServiceProvider: () -> any TimelineProtocol
+    var roomsServiceProvider: (() -> any RoomsProtocol)?
     var securityServiceProvider: (() -> any SecurityProtocol)?
     var typingServiceProvider: (() -> any TypingProtocol)?
     var currentUserID: String?
@@ -75,7 +76,7 @@ struct MainView: View {
                 let room = roomListViewModel.allRooms.first { $0.id == newID }
                 timelineViewModel = TimelineViewModel(
                     roomID: newID,
-                    roomService: roomServiceProvider(),
+                    roomService: timelineServiceProvider(),
                     typingService: typingServiceProvider?(),
                     currentUserID: currentUserID,
                     initialUnreadCount: room?.unreadCount ?? 0
@@ -86,7 +87,7 @@ struct MainView: View {
         }
         .sheet(isPresented: $showNewDM) {
             NewDMSheet(
-                viewModel: NewDMViewModel(roomService: roomServiceProvider()),
+                viewModel: NewDMViewModel(roomService: roomsServiceProvider!()),
                 onCreated: { roomID in
                     if let room = roomListViewModel.allRooms.first(where: { $0.id == roomID }) {
                         roomListViewModel.selectRoom(room)

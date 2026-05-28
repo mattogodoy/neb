@@ -24,7 +24,8 @@ struct NebApp: App {
                         if let roomListVM = appState.roomListViewModel {
                             MainView(
                                 roomListViewModel: roomListVM,
-                                roomServiceProvider: { appState.makeRoomService() },
+                                timelineServiceProvider: { appState.makeTimelineService() },
+                                roomsServiceProvider: { appState.makeRoomsService() },
                                 securityServiceProvider: { appState.makeSecurityService() },
                                 typingServiceProvider: { appState.makeTypingService() },
                                 currentUserID: appState.currentUserID,

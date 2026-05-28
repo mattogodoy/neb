@@ -5,7 +5,7 @@ import os
 private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Room")
 
-public final class Room: RoomProtocol, @unchecked Sendable {
+public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private let roomListServiceProvider: () -> RoomListService?
     private let lock = NSLock()
@@ -20,7 +20,7 @@ public final class Room: RoomProtocol, @unchecked Sendable {
         self.roomListServiceProvider = roomListServiceProvider
     }
 
-    public func timelineStream(roomID: String) -> AsyncStream<[NebMessage]> {
+    public func messageStream(roomID: String) -> AsyncStream<[NebMessage]> {
         lock.lock()
         setupGeneration &+= 1
         let myGeneration = setupGeneration
@@ -162,7 +162,7 @@ public final class Room: RoomProtocol, @unchecked Sendable {
         }
     }
 
-    public func sendMessage(roomID: String, body: String) async throws {
+    public func send(roomID: String, body: String) async throws {
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
         guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
         let timeline = try await room.timeline()
@@ -170,7 +170,7 @@ public final class Room: RoomProtocol, @unchecked Sendable {
         let _ = try await timeline.send(msg: content)
     }
 
-    public func sendReadReceipt(roomID: String, eventID: String) async throws {
+    public func markAsRead(roomID: String) async throws {
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
         guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
         try await room.markAsRead(receiptType: .read)
@@ -202,17 +202,150 @@ public final class Room: RoomProtocol, @unchecked Sendable {
         let _ = try await handle.timeline.paginateBackwards(numEvents: UInt16(min(count, UInt(UInt16.max))))
     }
 
-    public func toggleReaction(roomID: String, eventID: String, emoji: String) async throws {
+    public func react(roomID: String, eventID: String, emoji: String) async throws {
         guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
         let itemID: EventOrTransactionId = .eventId(eventId: eventID)
         let _ = try await handle.timeline.toggleReaction(itemId: itemID, key: emoji)
     }
 
-    public func editMessage(roomID: String, eventID: String, newBody: String) async throws {
+    public func edit(roomID: String, eventID: String, newBody: String) async throws {
         guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
         let itemID: EventOrTransactionId = .eventId(eventId: eventID)
         let content = messageEventContentFromMarkdown(md: newBody)
         try await handle.timeline.edit(eventOrTransactionId: itemID, newContent: .roomMessage(content: content))
+    }
+
+    public func sendReply(roomID: String, body: String, replyToEventID: String) async throws {
+        guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
+        let content = messageEventContentFromMarkdown(md: body)
+        try await handle.timeline.sendReply(msg: content, eventId: replyToEventID)
+    }
+
+    public func delete(roomID: String, eventID: String, reason: String?) async throws {
+        guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
+        let itemID: EventOrTransactionId = .eventId(eventId: eventID)
+        try await handle.timeline.redactEvent(eventOrTransactionId: itemID, reason: reason)
+    }
+
+    public func sendImage(roomID: String, url: URL, caption: String?) async throws {
+        logger.warning("sendImage not yet implemented")
+    }
+
+    public func sendFile(roomID: String, url: URL, caption: String?) async throws {
+        logger.warning("sendFile not yet implemented")
+    }
+
+    public func sendVideo(roomID: String, url: URL, thumbnailURL: URL, caption: String?) async throws {
+        logger.warning("sendVideo not yet implemented")
+    }
+
+    // MARK: - MembersProtocol
+
+    public func members(roomID: String) async throws -> [NebUser] {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        var users: [NebUser] = []
+        let membersIterator = try await room.membersNoSync()
+        while let chunk = membersIterator.nextChunk(chunkSize: 50) {
+            for member in chunk {
+                users.append(NebUser(
+                    id: member.userId,
+                    displayName: member.displayName,
+                    avatarURL: member.avatarUrl
+                ))
+            }
+        }
+        return users
+    }
+
+    public func invite(roomID: String, userID: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.inviteUserById(userId: userID)
+    }
+
+    public func kick(roomID: String, userID: String, reason: String?) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.kickUser(userId: userID, reason: reason)
+    }
+
+    public func ban(roomID: String, userID: String, reason: String?) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.banUser(userId: userID, reason: reason)
+    }
+
+    public func unban(roomID: String, userID: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.unbanUser(userId: userID, reason: nil)
+    }
+
+    public func acceptInvite(roomID: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        let _ = try await client.joinRoomById(roomId: roomID)
+    }
+
+    // MARK: - RoomsProtocol
+
+    public func createRoom(name: String?, topic: String?, isEncrypted: Bool, isDirect: Bool, inviteUserIDs: [String]) async throws -> String {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        let params = CreateRoomParameters(
+            name: name,
+            topic: topic,
+            isEncrypted: isEncrypted,
+            isDirect: isDirect,
+            visibility: .private,
+            preset: isDirect ? .trustedPrivateChat : .privateChat,
+            invite: inviteUserIDs,
+            avatar: nil,
+            powerLevelContentOverride: nil
+        )
+        return try await client.createRoom(request: params)
+    }
+
+    public func joinRoom(roomIDOrAlias: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        let _ = try await client.joinRoomByIdOrAlias(roomIdOrAlias: roomIDOrAlias, serverNames: [])
+    }
+
+    public func leaveRoom(roomID: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.leave()
+    }
+
+    public func setRoomName(roomID: String, name: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.setName(name: name)
+    }
+
+    public func setRoomTopic(roomID: String, topic: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.setTopic(topic: topic)
+    }
+
+    public func setRoomAvatar(roomID: String, data: Data, mimeType: String) async throws {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        try await room.uploadAvatar(mimeType: mimeType, data: data, mediaInfo: nil)
+    }
+
+    public func roomInfo(roomID: String) async throws -> NebRoom {
+        guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        let info = try await room.roomInfo()
+        return NebRoom(
+            id: roomID,
+            name: room.displayName() ?? roomID,
+            avatarURL: info.avatarUrl,
+            unreadCount: UInt(max(info.numUnreadMessages, info.numUnreadNotifications)),
+            isDirect: info.isDirect,
+            memberCount: UInt(info.activeMembersCount)
+        )
     }
 
     private func timelineHandle(for roomID: String) -> TimelineHandle? {

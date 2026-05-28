@@ -67,7 +67,9 @@ final class AppState {
         session.cachedHomeserverURL ?? ""
     }
 
-    func makeRoomService() -> any RoomProtocol { roomAdapter }
+    func makeTimelineService() -> any TimelineProtocol { roomAdapter }
+    func makeRoomsService() -> any RoomsProtocol { roomAdapter }
+    func makeMembersService() -> any MembersProtocol { roomAdapter }
     func makeSecurityService() -> any SecurityProtocol { securityAdapter }
     func makeTypingService() -> any TypingProtocol { typingAdapter }
 

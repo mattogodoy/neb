@@ -17,7 +17,7 @@ public final class TimelineViewModel {
     public let initialUnreadCount: UInt
 
     private let roomID: String
-    private let roomService: any RoomProtocol
+    private let roomService: any TimelineProtocol
     private let typingService: (any TypingProtocol)?
     private let currentUserID: String?
     @ObservationIgnored nonisolated(unsafe) private var timelineTask: Task<Void, Never>?
@@ -27,7 +27,7 @@ public final class TimelineViewModel {
 
     public init(
         roomID: String,
-        roomService: any RoomProtocol,
+        roomService: any TimelineProtocol,
         typingService: (any TypingProtocol)? = nil,
         currentUserID: String? = nil,
         initialUnreadCount: UInt = 0
@@ -73,14 +73,14 @@ public final class TimelineViewModel {
         guard !trimmed.isEmpty else { return }
         stopTyping()
         do {
-            try await roomService.sendMessage(roomID: roomID, body: trimmed)
+            try await roomService.send(roomID: roomID, body: trimmed)
         } catch { logger.error("Failed to send message in \(self.roomID): \(error)") }
     }
 
     public func markAsRead() async {
         guard let lastMessage = messages.last else { return }
         do {
-            try await roomService.sendReadReceipt(roomID: roomID, eventID: lastMessage.id)
+            try await roomService.markAsRead(roomID: roomID)
         } catch { logger.error("Failed to send read receipt in \(self.roomID): \(error)") }
     }
 
@@ -96,7 +96,7 @@ public final class TimelineViewModel {
 
     public func toggleReaction(eventID: String, emoji: String) async {
         do {
-            try await roomService.toggleReaction(roomID: roomID, eventID: eventID, emoji: emoji)
+            try await roomService.react(roomID: roomID, eventID: eventID, emoji: emoji)
         } catch { logger.error("Failed to toggle reaction in \(self.roomID): \(error)") }
     }
 
@@ -119,7 +119,7 @@ public final class TimelineViewModel {
             return
         }
         do {
-            try await roomService.editMessage(roomID: roomID, eventID: editing.id, newBody: newBody)
+            try await roomService.edit(roomID: roomID, eventID: editing.id, newBody: newBody)
         } catch { logger.error("Failed to edit message \(editing.id) in \(self.roomID): \(error)") }
         editingMessage = nil
         composerText = ""
@@ -136,7 +136,7 @@ public final class TimelineViewModel {
     private func startObserving() {
         timelineTask = Task { [weak self] in
             guard let self else { return }
-            for await messages in self.roomService.timelineStream(roomID: self.roomID) {
+            for await messages in self.roomService.messageStream(roomID: self.roomID) {
                 guard !Task.isCancelled else { break }
                 self.messages = messages
                 self.messageLayouts = Self.computeLayouts(for: messages)
