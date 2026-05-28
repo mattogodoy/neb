@@ -81,6 +81,8 @@ public final class NebDatabase: Sendable {
                     """,
                 arguments: [confirmedEventID, transactionID]
             )
+            let changed = db.changesCount
+            logger.info("DIAG reconcile: txn=\(transactionID) -> eventID=\(confirmedEventID) rowsChanged=\(changed)")
         }
     }
 

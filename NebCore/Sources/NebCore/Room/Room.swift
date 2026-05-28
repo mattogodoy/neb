@@ -182,29 +182,12 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
 
     public func send(roomID: String, body: String) async throws {
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
-        let myUserID = (try? client.userId()) ?? ""
-        let txnID = "~send-\(UUID().uuidString)"
-
-        let pending = MessageRecord(
-            eventID: txnID,
-            roomID: roomID,
-            senderID: myUserID,
-            body: body,
-            timestamp: Date().timeIntervalSince1970,
-            sendStatus: "pending",
-            transactionID: txnID
-        )
-        try? database.insertMessage(pending)
-
-        do {
-            guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
-            let timeline = try await room.timeline()
-            let content = messageEventContentFromMarkdown(md: body)
-            let _ = try await timeline.send(msg: content)
-        } catch {
-            // Message stays as "pending" in the DB — will be retried or marked failed
-            logger.warning("Send failed for \(roomID), message queued as pending: \(error.localizedDescription)")
-        }
+        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+        let timeline = try await room.timeline()
+        let content = messageEventContentFromMarkdown(md: body)
+        // The SDK manages the full lifecycle: the NebTimelineListener will
+        // receive .notSentYet → .sent (or .sendingFailed) and write to the DB.
+        let _ = try await timeline.send(msg: content)
     }
 
     public func markAsRead(roomID: String) async throws {
@@ -528,28 +511,63 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             transactionID = id
         }
 
+        // DEBUG: Log every event processed
+        logger.info("DIAG processItem: eventID=\(eventID) txnID=\(transactionID ?? "nil") localState=\(String(describing: event.localSendState)) sender=\(event.sender)")
+
         // Handle local send state reconciliation
         if let localState = event.localSendState {
             switch localState {
             case .sent(let confirmedEventID):
+                logger.info("DIAG .sent: confirmedEventID=\(confirmedEventID) txnID=\(transactionID ?? "nil") eventID=\(eventID)")
                 if transactionID != nil {
                     // Reconcile: replace local txn ID with real event ID
                     try? database.reconcilePendingMessage(
                         transactionID: eventID,
                         confirmedEventID: confirmedEventID
                     )
+                    logger.info("DIAG reconciled: txn=\(eventID) -> confirmed=\(confirmedEventID)")
                 }
                 // Always return — the message will arrive again as a regular
                 // timeline item (without localSendState) and get inserted then.
                 return
             case .sendingFailed(_, _):
+                logger.info("DIAG .sendingFailed: eventID=\(eventID)")
+                // Insert the failed message if it doesn't exist yet, then update status.
+                if case .message(let msgContent) = msgLike.kind {
+                    let record = MessageRecord(
+                        eventID: eventID,
+                        roomID: roomID,
+                        senderID: event.sender,
+                        body: msgContent.body,
+                        timestamp: TimeInterval(event.timestamp) / 1000,
+                        sendStatus: "failed",
+                        transactionID: transactionID
+                    )
+                    try? database.insertMessage(record)
+                }
                 try? database.updateSendStatus(eventID: eventID, status: "failed")
                 return
             case .notSentYet(_):
-                try? database.updateSendStatus(eventID: eventID, status: "sending")
+                logger.info("DIAG .notSentYet: eventID=\(eventID)")
+                // Insert the pending message using the SDK's transaction ID.
+                // INSERT OR IGNORE prevents duplicates if called again.
+                if case .message(let msgContent) = msgLike.kind {
+                    let record = MessageRecord(
+                        eventID: eventID,
+                        roomID: roomID,
+                        senderID: event.sender,
+                        body: msgContent.body,
+                        timestamp: TimeInterval(event.timestamp) / 1000,
+                        sendStatus: "sending",
+                        transactionID: transactionID
+                    )
+                    try? database.insertMessage(record)
+                }
                 return
             }
         }
+
+        logger.info("DIAG inserting message: eventID=\(eventID) txnID=\(transactionID ?? "nil")")
 
         // Process message content
         switch msgLike.kind {
