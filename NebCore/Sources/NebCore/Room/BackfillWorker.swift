@@ -22,6 +22,7 @@ public final class BackfillWorker: @unchecked Sendable {
 
     public func start(roomIDs: [String]) {
         task?.cancel()
+        logger.info("Backfill worker starting for \(roomIDs.count) rooms")
         task = Task(priority: .utility) { [weak self] in
             guard let self else { return }
             for roomID in roomIDs {
