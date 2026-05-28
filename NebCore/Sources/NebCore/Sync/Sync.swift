@@ -30,34 +30,47 @@ public final class Sync: SyncProtocol, @unchecked Sendable {
             throw NebError.notLoggedIn
         }
 
-        logger.info("Starting sync...")
-        let sync = try await client.syncService().finish()
-        let roomList = sync.roomListService()
+        var attempt = 0
+        let maxDelay: UInt64 = 30_000_000_000 // 30 seconds
 
-        self.syncService = sync
-        self.roomListService = roomList
+        while !Task.isCancelled {
+            do {
+                logger.info("Starting sync (attempt \(attempt + 1))...")
+                let sync = try await client.syncService().finish()
+                let roomList = sync.roomListService()
 
-        let allRooms = try await roomList.allRooms()
-        self.allRoomsList = allRooms
+                self.syncService = sync
+                self.roomListService = roomList
 
-        let listener = NebRoomListEntriesListener { [weak self] updates in
-            self?.applyUpdates(updates)
+                let allRooms = try await roomList.allRooms()
+                self.allRoomsList = allRooms
+
+                let listener = NebRoomListEntriesListener { [weak self] updates in
+                    self?.applyUpdates(updates)
+                }
+                self.entriesListener = listener
+
+                let result = allRooms.entriesWithDynamicAdapters(
+                    pageSize: 100,
+                    listener: listener
+                )
+                self.entriesHandle = result.entriesStream()
+                self.entriesController = result.controller()
+                let _ = self.entriesController?.setFilter(kind: .all(filters: []))
+
+                logger.info("Sync service starting...")
+                await sync.start()
+                isOnline = true
+                for (_, c) in statusContinuations { c.yield(true) }
+                logger.info("Sync service started")
+                return // success — exit the retry loop
+            } catch {
+                attempt += 1
+                let delay = min(UInt64(pow(2.0, Double(min(attempt, 5)))) * 1_000_000_000, maxDelay)
+                logger.warning("Sync attempt \(attempt) failed: \(error.localizedDescription), retrying in \(delay / 1_000_000_000)s")
+                try? await Task.sleep(nanoseconds: delay)
+            }
         }
-        self.entriesListener = listener
-
-        let result = allRooms.entriesWithDynamicAdapters(
-            pageSize: 100,
-            listener: listener
-        )
-        self.entriesHandle = result.entriesStream()
-        self.entriesController = result.controller()
-        let _ = self.entriesController?.setFilter(kind: .all(filters: []))
-
-        logger.info("Sync service starting...")
-        await sync.start()
-        isOnline = true
-        for (_, c) in statusContinuations { c.yield(true) }
-        logger.info("Sync service started")
     }
 
     public func stop() async throws {

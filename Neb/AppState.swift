@@ -19,6 +19,7 @@ final class AppState {
     private(set) var loginViewModel: LoginViewModel
     private(set) var roomListViewModel: RoomListViewModel?
     private(set) var deviceVerificationStatus: DeviceVerificationStatus = .unknown
+    @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
 
     init() {
         let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -60,7 +61,7 @@ final class AppState {
         do { let _ = try await notificationAdapter.requestPermission() } catch { logger.error("Failed to request notification permission: \(error)") }
 
         // Sync connects in the background — UI is already showing cached data
-        Task { [weak self] in
+        syncTask = Task { [weak self] in
             guard let self else { return }
             do {
                 try await self.sync.start()
@@ -90,6 +91,8 @@ final class AppState {
 
     func onLoggedOut() async {
         backfillWorker.stop()
+        syncTask?.cancel()
+        syncTask = nil
         do { try await sync.stop() } catch { logger.error("Failed to stop sync: \(error)") }
         roomListViewModel = nil
         deviceVerificationStatus = .unknown
