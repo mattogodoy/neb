@@ -196,10 +196,15 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
         )
         try? database.insertMessage(pending)
 
-        guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
-        let timeline = try await room.timeline()
-        let content = messageEventContentFromMarkdown(md: body)
-        let _ = try await timeline.send(msg: content)
+        do {
+            guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
+            let timeline = try await room.timeline()
+            let content = messageEventContentFromMarkdown(md: body)
+            let _ = try await timeline.send(msg: content)
+        } catch {
+            // Message stays as "pending" in the DB — will be retried or marked failed
+            logger.warning("Send failed for \(roomID), message queued as pending: \(error.localizedDescription)")
+        }
     }
 
     public func markAsRead(roomID: String) async throws {
