@@ -19,6 +19,7 @@ final class AppState {
     private(set) var loginViewModel: LoginViewModel
     private(set) var roomListViewModel: RoomListViewModel?
     private(set) var deviceVerificationStatus: DeviceVerificationStatus = .unknown
+    private(set) var isOnline: Bool = false
     @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
 
     init() {
@@ -70,6 +71,13 @@ final class AppState {
             }
         }
 
+        Task { [weak self] in
+            guard let self else { return }
+            for await online in self.sync.statusStream() {
+                self.isOnline = online
+            }
+        }
+
         do { try await securityAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
 
         Task { [weak self] in
@@ -96,6 +104,7 @@ final class AppState {
         do { try await sync.stop() } catch { logger.error("Failed to stop sync: \(error)") }
         roomListViewModel = nil
         deviceVerificationStatus = .unknown
+        isOnline = false
     }
 
     var homeserverURL: String {

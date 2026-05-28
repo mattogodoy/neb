@@ -36,6 +36,7 @@
 		A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCE3A05F93C5768B2871FAA /* NebApp.swift */; };
 		A4BB57F1813CF4D820231968 /* RoomListViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49CEECC29CC30033E19DBE35 /* RoomListViewModelTests.swift */; };
 		A4F65FD5E20C13A5A7F202C2 /* MockCryptoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4396CA3A301D6FFFE39A1AF /* MockCryptoService.swift */; };
+		A799EE82625425E0CE740A16 /* ConnectionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA0BA6CCB12F45EC3B9FECE /* ConnectionBanner.swift */; };
 		AA1A912C03F3063A0401207F /* MockRoomService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076E0D2DC6A4ABFAA8CEE409 /* MockRoomService.swift */; };
 		AB510EE0F16E920071A662A7 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145BD912A2D89307D0EC7E9B /* SidebarView.swift */; };
 		AC51D684A1C8FB2F36BE89E5 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F865AEBE26F67E8EC78563 /* AvatarView.swift */; };
@@ -73,6 +74,7 @@
 		1EE5BD6CC36497D248C28ADF /* QuickReactBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickReactBar.swift; sourceTree = "<group>"; };
 		201AF83FAF9B6FBF5DAFEFDA /* HTMLRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLRenderer.swift; sourceTree = "<group>"; };
 		2B5647AAC9B5E1CB3A8D2F0A /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		2BA0BA6CCB12F45EC3B9FECE /* ConnectionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBanner.swift; sourceTree = "<group>"; };
 		2C9AFA84D89FD9FDB3FDD154 /* AttributedStringFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributedStringFormatter.swift; sourceTree = "<group>"; };
 		32B879077FB3F65C28A6B106 /* TimelineViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineViewModelTests.swift; sourceTree = "<group>"; };
 		3CAA00277FAEF93BECC66694 /* Neb.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Neb.entitlements; sourceTree = "<group>"; };
@@ -174,6 +176,7 @@
 			isa = PBXGroup;
 			children = (
 				C5F865AEBE26F67E8EC78563 /* AvatarView.swift */,
+				2BA0BA6CCB12F45EC3B9FECE /* ConnectionBanner.swift */,
 				B4D5E9AC5A26021C1D0E531F /* EmojiData.swift */,
 				B4694CCD8FCDB113FA519BAB /* EmojiPickerView.swift */,
 				F81717C619AAEC1806C86373 /* HTMLRenderCache.swift */,
@@ -379,6 +382,7 @@
 				383763D2559DE10C40EF481A /* AppState.swift in Sources */,
 				9BF4232DD5298DEDC06AB5E7 /* AttributedStringFormatter.swift in Sources */,
 				AC51D684A1C8FB2F36BE89E5 /* AvatarView.swift in Sources */,
+				A799EE82625425E0CE740A16 /* ConnectionBanner.swift in Sources */,
 				49DF8E2527EB9AF7AD5F79DF /* ContactVerificationView.swift in Sources */,
 				2D739C11FE3DC015AB192453 /* DaySeparatorView.swift in Sources */,
 				DBB867147261FEA66794B285 /* DeviceVerificationView.swift in Sources */,

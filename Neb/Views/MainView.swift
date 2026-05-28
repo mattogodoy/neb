@@ -8,6 +8,7 @@ struct MainView: View {
     var securityServiceProvider: (() -> any SecurityProtocol)?
     var typingServiceProvider: (() -> any TypingProtocol)?
     var syncServiceProvider: (() -> any SyncProtocol)?
+    var isOnline: Bool = true
     var currentUserID: String?
     var database: NebDatabase?
     var deviceVerificationStatus: DeviceVerificationStatus = .unknown
@@ -47,6 +48,9 @@ struct MainView: View {
             }
         }
         .frame(minWidth: 700, minHeight: 500)
+        .safeAreaInset(edge: .top) {
+            ConnectionBanner(isOnline: isOnline)
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { showDeviceVerification = true }) {
