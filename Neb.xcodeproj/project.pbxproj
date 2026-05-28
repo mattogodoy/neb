@@ -97,7 +97,7 @@
 		C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceVerificationView.swift; sourceTree = "<group>"; };
 		C49DF09A31FF185152DC81A0 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditor.swift; sourceTree = "<group>"; };
 		C5F865AEBE26F67E8EC78563 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
-		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NebCore; path = NebCore; sourceTree = SOURCE_ROOT; };
+		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = NebCore; sourceTree = SOURCE_ROOT; };
 		D4A9A42E9CEF2F2E33992366 /* Neb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Neb.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC5B162AE523CA9C5BA1A337 /* NewDMViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDMViewModel.swift; sourceTree = "<group>"; };
 		DE07898CFAE3650811D5CA3B /* NewDMViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDMViewModelTests.swift; sourceTree = "<group>"; };
@@ -575,10 +575,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_LDFLAGS = (
-					"-Wl,-w",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app;
+				OTHER_LDFLAGS = "-Wl,-w";
+				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app1;
 				PRODUCT_NAME = Neb;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
@@ -600,10 +598,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_LDFLAGS = (
-					"-Wl,-w",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app;
+				OTHER_LDFLAGS = "-Wl,-w";
+				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app1;
 				PRODUCT_NAME = Neb;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
