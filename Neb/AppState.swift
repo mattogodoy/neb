@@ -8,7 +8,7 @@ private let logger = Logger(subsystem: "com.neb.app", category: "AppState")
 @Observable
 final class AppState {
     let session: Session
-    let syncAdapter: MatrixSyncAdapter
+    let sync: Sync
     let roomAdapter: Room
     let devicesAdapter: Devices
     let securityAdapter: Security
@@ -28,7 +28,7 @@ final class AppState {
         let database = try! NebDatabase(path: dbPath)
 
         let session = Session()
-        let sync = MatrixSyncAdapter(clientProvider: { session.getClient() })
+        let sync = Sync(clientProvider: { session.getClient() }, database: database)
         let room = Room(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService }, database: database)
         let devices = Devices(clientProvider: { session.getClient() })
         let security = Security(clientProvider: { session.getClient() })
@@ -41,7 +41,7 @@ final class AppState {
 
         self.database = database
         self.session = session
-        self.syncAdapter = sync
+        self.sync = sync
         self.roomAdapter = room
         self.devicesAdapter = devices
         self.securityAdapter = security
@@ -54,12 +54,11 @@ final class AppState {
         do { try database.failStalePendingMessages() } catch { logger.error("Failed to clean pending messages: \(error)") }
         AvatarImageCache.shared.setClientProvider { [weak self] in self?.session.getClient() }
         roomListViewModel = RoomListViewModel(
-            syncService: syncAdapter,
-            notificationService: notificationAdapter,
-            typingService: roomAdapter
+            roomService: roomAdapter,
+            notificationService: notificationAdapter
         )
         do { let _ = try await notificationAdapter.requestPermission() } catch { logger.error("Failed to request notification permission: \(error)") }
-        do { try await syncAdapter.startSync() } catch { logger.error("Failed to start sync: \(error)") }
+        do { try await sync.start() } catch { logger.error("Failed to start sync: \(error)") }
         do { try await securityAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
 
         Task { [weak self] in
@@ -72,7 +71,7 @@ final class AppState {
         Task { [weak self] in
             guard let self else { return }
             // Wait for the first room list emission then start the backfill worker
-            for await rooms in self.syncAdapter.roomListStream() {
+            for await rooms in self.roomAdapter.roomListStream() {
                 let roomIDs = rooms.map { $0.id }
                 self.backfillWorker.start(roomIDs: roomIDs)
                 break
@@ -82,7 +81,7 @@ final class AppState {
 
     func onLoggedOut() async {
         backfillWorker.stop()
-        do { try await syncAdapter.stopSync() } catch { logger.error("Failed to stop sync: \(error)") }
+        do { try await sync.stop() } catch { logger.error("Failed to stop sync: \(error)") }
         roomListViewModel = nil
         deviceVerificationStatus = .unknown
     }

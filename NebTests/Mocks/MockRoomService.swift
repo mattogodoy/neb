@@ -58,4 +58,40 @@ final class MockRoomsService: RoomsProtocol, @unchecked Sendable {
     func roomInfo(roomID: String) async throws -> NebRoom {
         NebRoom(id: roomID, name: "Mock Room")
     }
+
+    // Room list
+    var rooms: [NebRoom] = []
+    private var roomsContinuation: AsyncStream<[NebRoom]>.Continuation?
+
+    @MainActor
+    func roomListStream() -> AsyncStream<[NebRoom]> {
+        AsyncStream { continuation in
+            self.roomsContinuation = continuation
+            continuation.yield(self.rooms)
+        }
+    }
+
+    func emitRooms(_ rooms: [NebRoom]) {
+        self.rooms = rooms
+        roomsContinuation?.yield(rooms)
+    }
+
+    // Typing
+    var typingNotices: [(roomID: String, isTyping: Bool)] = []
+    private var typingContinuations: [String: AsyncStream<[NebUser]>.Continuation] = [:]
+
+    func sendTypingNotice(roomID: String, isTyping: Bool) async throws {
+        typingNotices.append((roomID: roomID, isTyping: isTyping))
+    }
+
+    func typingUsersStream(roomID: String) -> AsyncStream<[NebUser]> {
+        AsyncStream { continuation in
+            self.typingContinuations[roomID] = continuation
+            continuation.yield([])
+        }
+    }
+
+    func emitTypingUsers(roomID: String, users: [NebUser]) {
+        typingContinuations[roomID]?.yield(users)
+    }
 }

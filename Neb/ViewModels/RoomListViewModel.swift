@@ -26,22 +26,19 @@ public final class RoomListViewModel {
         return allRooms.filter { $0.name.lowercased().contains(query) }
     }
 
-    private let syncService: any SyncProtocol
+    private let roomService: any RoomsProtocol
     private let notificationService: (any NotificationProtocol)?
     private var previousUnreadCounts: [String: UInt] = [:]
     @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
-    private let typingService: (any TypingProtocol)?
     private var roomTypingUsers: [String: [NebUser]] = [:]
     @ObservationIgnored nonisolated(unsafe) private var typingTasks: [String: Task<Void, Never>] = [:]
 
     init(
-        syncService: any SyncProtocol,
-        notificationService: (any NotificationProtocol)? = nil,
-        typingService: (any TypingProtocol)? = nil
+        roomService: any RoomsProtocol,
+        notificationService: (any NotificationProtocol)? = nil
     ) {
-        self.syncService = syncService
+        self.roomService = roomService
         self.notificationService = notificationService
-        self.typingService = typingService
         startObserving()
     }
 
@@ -65,7 +62,7 @@ public final class RoomListViewModel {
     private func startObserving() {
         syncTask = Task { [weak self] in
             guard let self else { return }
-            for await rooms in self.syncService.roomListStream() {
+            for await rooms in self.roomService.roomListStream() {
                 guard !Task.isCancelled else { break }
 
                 let oldRooms = self.allRooms
@@ -78,8 +75,6 @@ public final class RoomListViewModel {
     }
 
     private func updateTypingSubscriptions(for rooms: [NebRoom]) {
-        guard let typingService else { return }
-
         let currentRoomIDs = Set(rooms.map(\.id))
         let subscribedRoomIDs = Set(typingTasks.keys)
 
@@ -93,9 +88,10 @@ public final class RoomListViewModel {
         // Subscribe to new rooms
         for roomID in currentRoomIDs.subtracting(subscribedRoomIDs) {
             typingTasks[roomID] = Task { [weak self] in
-                for await users in typingService.typingUsersStream(roomID: roomID) {
+                guard let self else { return }
+                for await users in self.roomService.typingUsersStream(roomID: roomID) {
                     guard !Task.isCancelled else { break }
-                    self?.roomTypingUsers[roomID] = users
+                    self.roomTypingUsers[roomID] = users
                 }
             }
         }

@@ -2,21 +2,23 @@ import Foundation
 import NebCore
 
 final class MockSyncService: SyncProtocol, @unchecked Sendable {
-    var rooms: [NebRoom] = []
-    private var roomsContinuation: AsyncStream<[NebRoom]>.Continuation?
+    var isOnline: Bool = false
+    var started = false
+    var stopped = false
 
-    func startSync() async throws {}
-    func stopSync() async throws {}
-
-    func roomListStream() -> AsyncStream<[NebRoom]> {
-        AsyncStream { continuation in
-            self.roomsContinuation = continuation
-            continuation.yield(self.rooms)
-        }
+    func start() async throws {
+        started = true
+        isOnline = true
     }
 
-    func emitRooms(_ rooms: [NebRoom]) {
-        self.rooms = rooms
-        roomsContinuation?.yield(rooms)
+    func stop() async throws {
+        stopped = true
+        isOnline = false
+    }
+
+    func statusStream() -> AsyncStream<Bool> {
+        AsyncStream { continuation in
+            continuation.yield(self.isOnline)
+        }
     }
 }
