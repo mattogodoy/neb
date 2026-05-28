@@ -381,6 +381,29 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
         try database.search(query: query, roomID: roomID)
     }
 
+    // MARK: - Typing
+
+    public func sendTypingNotice(roomID: String, isTyping: Bool) async throws {
+        guard let client = clientProvider() else { return }
+        guard let room = try client.getRoom(roomId: roomID) else { return }
+        try await room.typingNotice(isTyping: isTyping)
+    }
+
+    public func typingUsersStream(roomID: String) -> AsyncStream<[NebUser]> {
+        AsyncStream { [weak self] continuation in
+            guard let self else { return }
+            guard let client = self.clientProvider() else { return }
+            guard let room = try? client.getRoom(roomId: roomID) else { return }
+
+            let listener = NebTypingListener(roomID: roomID, room: room, continuation: continuation)
+            let handle = room.subscribeToTypingNotifications(listener: listener)
+
+            continuation.onTermination = { _ in
+                _ = handle
+            }
+        }
+    }
+
     // MARK: - Internal helpers
 
     private func timelineHandle(for roomID: String) -> TimelineHandle? {
@@ -581,6 +604,48 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         // Write read receipts
         for (userID, _) in event.readReceipts {
             try? database.upsertReadReceipt(roomID: roomID, userID: userID, eventID: eventID)
+        }
+    }
+}
+
+private final class NebTypingListener: TypingNotificationsListener, @unchecked Sendable {
+    private let roomID: String
+    private let room: SDKRoom
+    private let continuation: AsyncStream<[NebUser]>.Continuation
+
+    init(roomID: String, room: SDKRoom, continuation: AsyncStream<[NebUser]>.Continuation) {
+        self.roomID = roomID
+        self.room = room
+        self.continuation = continuation
+    }
+
+    func call(typingUserIds: [String]) {
+        Task {
+            var users: [NebUser] = []
+            for userID in typingUserIds {
+                var displayName: String? = nil
+                var avatarURL: String? = nil
+
+                if let members = try? await room.membersNoSync() {
+                    while let chunk = members.nextChunk(chunkSize: 50) {
+                        for member in chunk {
+                            if member.userId == userID {
+                                displayName = member.displayName
+                                avatarURL = member.avatarUrl
+                                break
+                            }
+                        }
+                        if displayName != nil { break }
+                    }
+                }
+
+                users.append(NebUser(
+                    id: userID,
+                    displayName: displayName,
+                    avatarURL: avatarURL
+                ))
+            }
+            continuation.yield(users)
         }
     }
 }

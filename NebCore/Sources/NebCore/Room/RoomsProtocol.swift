@@ -1,6 +1,11 @@
 import Foundation
 
-public protocol RoomsProtocol: Sendable {
+public protocol TypingProtocol: Sendable {
+    func sendTypingNotice(roomID: String, isTyping: Bool) async throws
+    func typingUsersStream(roomID: String) -> AsyncStream<[NebUser]>
+}
+
+public protocol RoomsProtocol: TypingProtocol {
     func createRoom(name: String?, topic: String?, isEncrypted: Bool, isDirect: Bool, inviteUserIDs: [String]) async throws -> String
     func createDM(userID: String) async throws -> String
     func joinRoom(roomIDOrAlias: String) async throws

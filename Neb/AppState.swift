@@ -13,7 +13,6 @@ final class AppState {
     let devicesAdapter: Devices
     let securityAdapter: Security
     let notificationAdapter: Notification
-    let typingAdapter: MatrixTypingAdapter
     let database: NebDatabase
     let backfillWorker: BackfillWorker
 
@@ -34,7 +33,6 @@ final class AppState {
         let devices = Devices(clientProvider: { session.getClient() })
         let security = Security(clientProvider: { session.getClient() })
         let notification = Notification()
-        let typing = MatrixTypingAdapter(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
         let backfill = BackfillWorker(
             clientProvider: { session.getClient() },
             roomListServiceProvider: { sync.roomListService },
@@ -48,7 +46,6 @@ final class AppState {
         self.devicesAdapter = devices
         self.securityAdapter = security
         self.notificationAdapter = notification
-        self.typingAdapter = typing
         self.backfillWorker = backfill
         self.loginViewModel = LoginViewModel(auth: session, session: session)
     }
@@ -59,7 +56,7 @@ final class AppState {
         roomListViewModel = RoomListViewModel(
             syncService: syncAdapter,
             notificationService: notificationAdapter,
-            typingService: typingAdapter
+            typingService: roomAdapter
         )
         do { let _ = try await notificationAdapter.requestPermission() } catch { logger.error("Failed to request notification permission: \(error)") }
         do { try await syncAdapter.startSync() } catch { logger.error("Failed to start sync: \(error)") }
@@ -98,7 +95,7 @@ final class AppState {
     func makeRoomsService() -> any RoomsProtocol { roomAdapter }
     func makeMembersService() -> any MembersProtocol { roomAdapter }
     func makeSecurityService() -> any SecurityProtocol { securityAdapter }
-    func makeTypingService() -> any TypingProtocol { typingAdapter }
+    func makeTypingService() -> any TypingProtocol { roomAdapter }
 
     var currentUserID: String? {
         session.cachedUserID
