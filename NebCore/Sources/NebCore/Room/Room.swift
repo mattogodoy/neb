@@ -517,18 +517,11 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         // Handle local send state reconciliation
         if let localState = event.localSendState {
             switch localState {
-            case .sent(let confirmedEventID):
-                logger.info("DIAG .sent: confirmedEventID=\(confirmedEventID) txnID=\(transactionID ?? "nil") eventID=\(eventID)")
-                if transactionID != nil {
-                    // Reconcile: replace local txn ID with real event ID
-                    try? database.reconcilePendingMessage(
-                        transactionID: eventID,
-                        confirmedEventID: confirmedEventID
-                    )
-                    logger.info("DIAG reconciled: txn=\(eventID) -> confirmed=\(confirmedEventID)")
-                }
-                // Always return — the message will arrive again as a regular
-                // timeline item (without localSendState) and get inserted then.
+            case .sent(_):
+                // The local echo is confirmed. Delete the pending row — the
+                // real event will be (or already was) inserted as a regular
+                // timeline item without localSendState.
+                try? database.deleteMessage(eventID: eventID)
                 return
             case .sendingFailed(_, _):
                 logger.info("DIAG .sendingFailed: eventID=\(eventID)")
