@@ -47,6 +47,7 @@ final class AppState {
     }
 
     func onLoggedIn() async {
+        do { try database.failStalePendingMessages() } catch { logger.error("Failed to clean pending messages: \(error)") }
         AvatarImageCache.shared.setClientProvider { [weak self] in self?.session.getClient() }
         roomListViewModel = RoomListViewModel(
             syncService: syncAdapter,
