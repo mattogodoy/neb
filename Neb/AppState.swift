@@ -51,7 +51,7 @@ final class AppState {
 
         Task { [weak self] in
             guard let self else { return }
-            for await status in self.devicesAdapter.deviceVerificationStatusStream() {
+            for await status in self.devicesAdapter.verificationStatusStream() {
                 self.deviceVerificationStatus = status
             }
         }

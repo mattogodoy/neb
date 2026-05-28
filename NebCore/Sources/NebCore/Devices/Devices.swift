@@ -13,11 +13,13 @@ public final class Devices: DevicesProtocol, @unchecked Sendable {
         self.clientProvider = clientProvider
     }
 
-    public func currentDeviceID() async -> String? {
-        try? clientProvider()?.deviceId()
+    // MARK: - Current device
+
+    public var currentDeviceID: String? {
+        get async { try? clientProvider()?.deviceId() }
     }
 
-    public func deviceVerificationStatusStream() -> AsyncStream<DeviceVerificationStatus> {
+    public func verificationStatusStream() -> AsyncStream<DeviceVerificationStatus> {
         AsyncStream { continuation in
             guard let client = clientProvider() else {
                 continuation.yield(.unknown)
@@ -34,6 +36,40 @@ public final class Devices: DevicesProtocol, @unchecked Sendable {
             self.verificationStateListener = listener
         }
     }
+
+    // MARK: - Device state
+
+    public func isLastDevice() async throws -> Bool {
+        guard let client = clientProvider() else { return true }
+        return try await client.encryption().isLastDevice()
+    }
+
+    public func hasOtherDevicesToVerify() async throws -> Bool {
+        guard let client = clientProvider() else { return false }
+        return try await client.encryption().hasDevicesToVerifyAgainst()
+    }
+
+    // MARK: - Device management URLs
+
+    public func devicesListURL() async -> URL? {
+        guard let client = clientProvider() else { return nil }
+        guard let urlString = try? await client.accountUrl(action: .devicesList) else { return nil }
+        return URL(string: urlString)
+    }
+
+    public func deviceViewURL(deviceID: String) async -> URL? {
+        guard let client = clientProvider() else { return nil }
+        guard let urlString = try? await client.accountUrl(action: .deviceView(deviceId: deviceID)) else { return nil }
+        return URL(string: urlString)
+    }
+
+    public func deviceDeleteURL(deviceID: String) async -> URL? {
+        guard let client = clientProvider() else { return nil }
+        guard let urlString = try? await client.accountUrl(action: .deviceDelete(deviceId: deviceID)) else { return nil }
+        return URL(string: urlString)
+    }
+
+    // MARK: - Private
 
     private static func mapVerificationState(_ state: MatrixRustSDK.VerificationState) -> DeviceVerificationStatus {
         switch state {

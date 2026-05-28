@@ -7,6 +7,16 @@ public enum DeviceVerificationStatus: Equatable, Sendable {
 }
 
 public protocol DevicesProtocol: Sendable {
-    func currentDeviceID() async -> String?
-    func deviceVerificationStatusStream() -> AsyncStream<DeviceVerificationStatus>
+    // Current device
+    var currentDeviceID: String? { get async }
+    func verificationStatusStream() -> AsyncStream<DeviceVerificationStatus>
+
+    // Device state
+    func isLastDevice() async throws -> Bool
+    func hasOtherDevicesToVerify() async throws -> Bool
+
+    // Device management (web URLs)
+    func devicesListURL() async -> URL?
+    func deviceViewURL(deviceID: String) async -> URL?
+    func deviceDeleteURL(deviceID: String) async -> URL?
 }
