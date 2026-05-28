@@ -251,3 +251,32 @@ import Testing
     let sent = results.filter { $0.message.sendStatus == "sent" }
     #expect(sent.count == 1)
 }
+
+@Test func fetchPendingMessages() throws {
+    let db = try NebDatabase()
+
+    let pending = MessageRecord(
+        eventID: "~send-1",
+        roomID: "!room:example.com",
+        senderID: "@me:example.com",
+        body: "hello",
+        timestamp: 1000,
+        sendStatus: "pending",
+        transactionID: "~send-1"
+    )
+    let sent = MessageRecord(
+        eventID: "$sent1",
+        roomID: "!room:example.com",
+        senderID: "@me:example.com",
+        body: "already sent",
+        timestamp: 999,
+        sendStatus: "sent"
+    )
+    try db.insertMessage(sent)
+    try db.insertMessage(pending)
+
+    let results = try db.fetchPendingMessages()
+    #expect(results.count == 1)
+    #expect(results[0].eventID == "~send-1")
+    #expect(results[0].body == "hello")
+}

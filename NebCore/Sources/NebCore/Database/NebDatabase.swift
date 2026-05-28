@@ -84,6 +84,16 @@ public final class NebDatabase: Sendable {
         }
     }
 
+    /// Delete a message by eventID.
+    public func deleteMessage(eventID: String) throws {
+        try dbQueue.write { db in
+            try db.execute(
+                sql: "DELETE FROM messages WHERE eventID = ?",
+                arguments: [eventID]
+            )
+        }
+    }
+
     /// Clear body and formattedBody for a redacted message.
     public func redactMessage(eventID: String) throws {
         try dbQueue.write { db in
@@ -102,6 +112,20 @@ public final class NebDatabase: Sendable {
                     UPDATE messages
                     SET sendStatus = 'failed'
                     WHERE sendStatus IN ('pending', 'sending')
+                    """
+            )
+        }
+    }
+
+    /// Fetch all messages with pending/sending status, ordered by timestamp.
+    public func fetchPendingMessages() throws -> [MessageRecord] {
+        try dbQueue.read { db in
+            try MessageRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT * FROM messages
+                    WHERE sendStatus IN ('pending', 'sending')
+                    ORDER BY timestamp ASC
                     """
             )
         }

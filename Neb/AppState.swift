@@ -75,6 +75,9 @@ final class AppState {
             guard let self else { return }
             for await online in self.sync.statusStream() {
                 self.isOnline = online
+                if online {
+                    await self.flushPendingMessages()
+                }
             }
         }
 
@@ -93,6 +96,20 @@ final class AppState {
                 let roomIDs = rooms.map { $0.id }
                 self.backfillWorker.start(roomIDs: roomIDs)
                 break
+            }
+        }
+    }
+
+    private func flushPendingMessages() async {
+        guard let pending = try? database.fetchPendingMessages(), !pending.isEmpty else { return }
+        logger.info("Flushing \(pending.count) pending messages")
+        for message in pending {
+            do {
+                // Delete the pending row — Room.send() will create a fresh one
+                try database.deleteMessage(eventID: message.eventID)
+                try await roomAdapter.send(roomID: message.roomID, body: message.body)
+            } catch {
+                logger.error("Failed to flush pending message \(message.eventID): \(error)")
             }
         }
     }
