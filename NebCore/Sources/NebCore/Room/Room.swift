@@ -5,9 +5,10 @@ import os
 private typealias SDKRoom = MatrixRustSDK.Room
 private let logger = Logger(subsystem: "com.neb.app", category: "Room")
 
-public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, @unchecked Sendable {
+public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, SearchProtocol, @unchecked Sendable {
     private let clientProvider: () -> Client?
     private let roomListServiceProvider: () -> RoomListService?
+    private let database: NebDatabase
     private let lock = NSLock()
     private var activeTimeline: (roomID: String, handle: TimelineHandle)?
     private var cachedTimelines: [String: TimelineHandle] = [:]
@@ -15,121 +16,139 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, @unch
     private let maxCachedTimelines = 5
     private var setupGeneration: UInt64 = 0
 
-    public init(clientProvider: @escaping () -> Client?, roomListServiceProvider: @escaping () -> RoomListService?) {
+    public init(
+        clientProvider: @escaping () -> Client?,
+        roomListServiceProvider: @escaping () -> RoomListService?,
+        database: NebDatabase
+    ) {
         self.clientProvider = clientProvider
         self.roomListServiceProvider = roomListServiceProvider
+        self.database = database
     }
 
-    public func messageStream(roomID: String) -> AsyncStream<[NebMessage]> {
-        lock.lock()
-        setupGeneration &+= 1
-        let myGeneration = setupGeneration
+    // MARK: - TimelineProtocol
 
-        if let active = activeTimeline, active.roomID != roomID {
-            active.handle.listener.detachContinuation()
-            cachedTimelines[active.roomID] = active.handle
-            cacheOrder.removeAll { $0 == active.roomID }
-            cacheOrder.append(active.roomID)
-            evictIfNeeded()
-            activeTimeline = nil
+    public func startTimelineSync(roomID: String) async throws {
+        // All mutation under NSLock must happen in a synchronous scope.
+        // Returns nil on cache hit, or the generation number for a fresh setup.
+        let myGeneration: UInt64? = lock.withLock {
+            setupGeneration &+= 1
+            let gen = setupGeneration
+
+            if let active = activeTimeline, active.roomID != roomID {
+                cachedTimelines[active.roomID] = active.handle
+                cacheOrder.removeAll { $0 == active.roomID }
+                cacheOrder.append(active.roomID)
+                evictIfNeeded()
+                activeTimeline = nil
+            }
+
+            if let cached = cachedTimelines.removeValue(forKey: roomID) {
+                cacheOrder.removeAll { $0 == roomID }
+                activeTimeline = (roomID: roomID, handle: cached)
+                return nil  // cache hit
+            }
+            return gen
         }
 
-        if let cached = cachedTimelines.removeValue(forKey: roomID) {
-            cacheOrder.removeAll { $0 == roomID }
-            activeTimeline = (roomID: roomID, handle: cached)
-            lock.unlock()
+        guard let myGeneration else {
             logger.info("Timeline cache hit for \(roomID)")
+            return
+        }
 
-            return AsyncStream { continuation in
-                cached.listener.attachContinuation(continuation)
+        guard let client = clientProvider() else {
+            throw NebError.notLoggedIn
+        }
+
+        if let rls = roomListServiceProvider() {
+            do {
+                try await rls.subscribeToRooms(roomIds: [roomID])
+                logger.info("Subscribed to room \(roomID)")
+            } catch {
+                logger.error("Failed to subscribe to room \(roomID): \(error)")
             }
         }
-        lock.unlock()
 
-        return AsyncStream { [weak self] continuation in
-            guard let self else {
-                continuation.finish()
-                return
-            }
+        guard isCurrentGeneration(myGeneration) else {
+            logger.info("startTimelineSync: setup for \(roomID) cancelled by newer switch")
+            return
+        }
 
-            Task {
-                guard let client = self.clientProvider() else {
-                    logger.error("timelineStream: not logged in")
-                    continuation.finish()
-                    return
-                }
-                if let rls = self.roomListServiceProvider() {
-                    do {
-                        try await rls.subscribeToRooms(roomIds: [roomID])
-                        logger.info("Subscribed to room \(roomID)")
-                    } catch {
-                        logger.error("Failed to subscribe to room \(roomID): \(error)")
-                    }
-                }
+        guard let room = try? client.getRoom(roomId: roomID) else {
+            throw NebError.roomNotFound(roomID)
+        }
 
-                guard self.isCurrentGeneration(myGeneration) else {
-                    logger.info("timelineStream: setup for \(roomID) cancelled by newer switch")
-                    continuation.finish()
-                    return
-                }
+        let timeline: Timeline
+        do {
+            timeline = try await room.timeline()
+        } catch {
+            logger.error("startTimelineSync: failed to get timeline for \(roomID): \(error)")
+            throw error
+        }
 
-                guard let room = try? client.getRoom(roomId: roomID) else {
-                    logger.error("timelineStream: room \(roomID) not found")
-                    continuation.finish()
-                    return
-                }
+        let myUserID = (try? client.userId()) ?? ""
 
-                let timeline: Timeline
-                do {
-                    timeline = try await room.timeline()
-                } catch {
-                    logger.error("timelineStream: failed to get timeline for \(roomID): \(error)")
-                    continuation.finish()
-                    return
-                }
-                let myUserID = (try? client.userId()) ?? ""
+        guard isCurrentGeneration(myGeneration) else {
+            logger.info("startTimelineSync: setup for \(roomID) cancelled by newer switch")
+            return
+        }
 
-                guard self.isCurrentGeneration(myGeneration) else {
-                    logger.info("timelineStream: setup for \(roomID) cancelled by newer switch")
-                    continuation.finish()
-                    return
-                }
+        let listener = NebTimelineListener(
+            roomID: roomID,
+            myUserID: myUserID,
+            database: database
+        )
 
-                let listener = NebTimelineListener(
-                    roomID: roomID,
-                    myUserID: myUserID,
-                    continuation: continuation
-                )
+        let listenerHandle = await timeline.addListener(listener: listener)
 
-                let listenerHandle = await timeline.addListener(listener: listener)
+        let handle = TimelineHandle(
+            room: room,
+            timeline: timeline,
+            listener: listener,
+            listenerHandle: listenerHandle
+        )
 
-                let handle = TimelineHandle(
-                    room: room,
-                    timeline: timeline,
-                    listener: listener,
-                    listenerHandle: listenerHandle
-                )
+        tryCommitActiveTimeline(roomID: roomID, handle: handle, generation: myGeneration)
 
-                self.tryCommitActiveTimeline(roomID: roomID, handle: handle, generation: myGeneration)
+        logger.info("Timeline listener active for \(roomID)")
+        let _ = try? await timeline.paginateBackwards(numEvents: 50)
 
-                logger.info("Timeline listener active for \(roomID)")
-                let _ = try? await timeline.paginateBackwards(numEvents: 50)
-
-                Task {
-                    if let members = try? await room.membersNoSync() {
-                        while let chunk = members.nextChunk(chunkSize: 50) {
-                            for member in chunk {
-                                listener.cacheProfile(
-                                    userID: member.userId,
-                                    name: member.displayName ?? member.userId,
-                                    avatarURL: member.avatarUrl
-                                )
-                            }
-                        }
-                        listener.refreshMessages()
+        Task {
+            if let members = try? await room.membersNoSync() {
+                while let chunk = members.nextChunk(chunkSize: 50) {
+                    for member in chunk {
+                        listener.cacheProfile(
+                            userID: member.userId,
+                            name: member.displayName ?? member.userId,
+                            avatarURL: member.avatarUrl
+                        )
+                        try? database.upsertProfile(
+                            userID: member.userId,
+                            displayName: member.displayName ?? member.userId,
+                            avatarURL: member.avatarUrl
+                        )
                     }
                 }
             }
+        }
+    }
+
+    public func stopTimelineSync(roomID: String) async throws {
+        let wasActive: Bool = lock.withLock {
+            if let active = activeTimeline, active.roomID == roomID {
+                cachedTimelines[active.roomID] = active.handle
+                cacheOrder.removeAll { $0 == active.roomID }
+                cacheOrder.append(active.roomID)
+                evictIfNeeded()
+                activeTimeline = nil
+                return true
+            }
+            return false
+        }
+        if wasActive {
+            logger.info("Timeline sync stopped for \(roomID), moved to cache")
+        } else {
+            logger.info("stopTimelineSync called for \(roomID) which is not active")
         }
     }
 
@@ -148,7 +167,6 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, @unch
             cacheOrder.removeAll { $0 == roomID }
             cacheOrder.append(roomID)
             evictIfNeeded()
-            handle.listener.detachContinuation()
         }
         lock.unlock()
     }
@@ -164,6 +182,20 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, @unch
 
     public func send(roomID: String, body: String) async throws {
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
+        let myUserID = (try? client.userId()) ?? ""
+        let txnID = "~send-\(UUID().uuidString)"
+
+        let pending = MessageRecord(
+            eventID: txnID,
+            roomID: roomID,
+            senderID: myUserID,
+            body: body,
+            timestamp: Date().timeIntervalSince1970,
+            sendStatus: "pending",
+            transactionID: txnID
+        )
+        try? database.insertMessage(pending)
+
         guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
         let timeline = try await room.timeline()
         let content = messageEventContentFromMarkdown(md: body)
@@ -195,11 +227,6 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, @unch
             powerLevelContentOverride: nil
         )
         return try await client.createRoom(request: params)
-    }
-
-    public func paginateBackwards(roomID: String, count: UInt) async throws {
-        guard let handle = timelineHandle(for: roomID) else { throw NebError.roomNotFound(roomID) }
-        let _ = try await handle.timeline.paginateBackwards(numEvents: UInt16(min(count, UInt(UInt16.max))))
     }
 
     public func react(roomID: String, eventID: String, emoji: String) async throws {
@@ -348,6 +375,14 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, @unch
         )
     }
 
+    // MARK: - SearchProtocol
+
+    public func search(query: String, roomID: String) async throws -> [SearchResult] {
+        try database.search(query: query, roomID: roomID)
+    }
+
+    // MARK: - Internal helpers
+
     private func timelineHandle(for roomID: String) -> TimelineHandle? {
         lock.lock()
         defer { lock.unlock() }
@@ -368,39 +403,15 @@ private struct TimelineHandle {
 private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
     private let roomID: String
     private let myUserID: String
+    private let database: NebDatabase
     private let lock = NSLock()
-    nonisolated(unsafe) private var continuation: AsyncStream<[NebMessage]>.Continuation?
     nonisolated(unsafe) private var items: [TimelineItem] = []
     nonisolated(unsafe) private var profileCache: [String: (name: String, avatarURL: String?)] = [:]
 
-    init(roomID: String, myUserID: String, continuation: AsyncStream<[NebMessage]>.Continuation) {
+    init(roomID: String, myUserID: String, database: NebDatabase) {
         self.roomID = roomID
         self.myUserID = myUserID
-        self.continuation = continuation
-    }
-
-    func attachContinuation(_ newContinuation: AsyncStream<[NebMessage]>.Continuation) {
-        lock.lock()
-        continuation = newContinuation
-        let messages = items.compactMap { convertItem($0) }
-        lock.unlock()
-        newContinuation.yield(messages)
-    }
-
-    func detachContinuation() {
-        lock.lock()
-        let old = continuation
-        continuation = nil
-        lock.unlock()
-        old?.finish()
-    }
-
-    func refreshMessages() {
-        lock.lock()
-        let cont = continuation
-        let messages = items.compactMap { convertItem($0) }
-        lock.unlock()
-        cont?.yield(messages)
+        self.database = database
     }
 
     func cacheProfile(userID: String, name: String, avatarURL: String?) {
@@ -442,46 +453,20 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             }
         }
 
-        let cont = continuation
-        let messages = items.compactMap { convertItem($0) }
+        // Process all current items and write to database
+        for item in items {
+            processItem(item)
+        }
         lock.unlock()
 
-        if let cont {
-            logger.info("Timeline \(self.roomID): \(messages.count) messages")
-            cont.yield(messages)
-        }
+        logger.info("Timeline \(self.roomID): processed \(self.items.count) items")
     }
 
-    private func convertItem(_ item: TimelineItem) -> NebMessage? {
-        guard let event = item.asEvent() else { return nil }
-        guard case .msgLike(let msgLike) = event.content else { return nil }
+    private func processItem(_ item: TimelineItem) {
+        guard let event = item.asEvent() else { return }
+        guard case .msgLike(let msgLike) = event.content else { return }
 
-        let body: String
-        var isEdited = false
-        var formattedBody: String? = nil
-        switch msgLike.kind {
-        case .message(let msgContent):
-            body = msgContent.body
-            isEdited = msgContent.isEdited
-            if case .text(let textContent) = msgContent.msgType,
-               let formatted = textContent.formatted,
-               case .html = formatted.format {
-                formattedBody = formatted.body
-            }
-        case .unableToDecrypt:
-            body = "\u{1F512} Encrypted message (verify this device to decrypt)"
-        default:
-            return nil
-        }
-
-        let eventID: String
-        switch event.eventOrTransactionId {
-        case .eventId(let id):
-            eventID = id
-        case .transactionId(let id):
-            eventID = id
-        }
-
+        // Extract sender profile
         var senderName = event.sender
         var senderAvatarURL: String? = nil
         switch event.senderProfile {
@@ -492,58 +477,110 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             break
         }
 
+        // Update profile cache and database
         profileCache[event.sender] = (name: senderName, avatarURL: senderAvatarURL)
+        try? database.upsertProfile(
+            userID: event.sender,
+            displayName: senderName,
+            avatarURL: senderAvatarURL
+        )
 
-        let sendStatus: SendStatus
+        // Determine event/transaction ID
+        let eventID: String
+        var transactionID: String? = nil
+        switch event.eventOrTransactionId {
+        case .eventId(let id):
+            eventID = id
+        case .transactionId(let id):
+            eventID = id
+            transactionID = id
+        }
+
+        // Handle local send state reconciliation
         if let localState = event.localSendState {
             switch localState {
-            case .notSentYet(_):
-                sendStatus = .sending
+            case .sent(let confirmedEventID):
+                if transactionID != nil {
+                    // Reconcile: replace local txn ID with real event ID
+                    try? database.reconcilePendingMessage(
+                        transactionID: eventID,
+                        confirmedEventID: confirmedEventID
+                    )
+                    return
+                }
             case .sendingFailed(_, _):
-                sendStatus = .failed
-            case .sent(_):
-                sendStatus = .sent
+                try? database.updateSendStatus(eventID: eventID, status: "failed")
+                return
+            case .notSentYet(_):
+                try? database.updateSendStatus(eventID: eventID, status: "sending")
+                return
             }
-        } else {
-            sendStatus = .sent
         }
 
-        let readReceipts: [ReadReceipt] = event.readReceipts
-            .filter { $0.key != myUserID }
-            .map { (userID, _) in
-                let cached = profileCache[userID]
-                return ReadReceipt(
-                    userID: userID,
-                    displayName: cached?.name ?? userID,
-                    avatarURL: cached?.avatarURL
+        // Process message content
+        switch msgLike.kind {
+        case .message(let msgContent):
+            let body = msgContent.body
+            let isEdited = msgContent.isEdited
+            var formattedBody: String? = nil
+            if case .text(let textContent) = msgContent.msgType,
+               let formatted = textContent.formatted,
+               case .html = formatted.format {
+                formattedBody = formatted.body
+            }
+
+            let timestamp = TimeInterval(event.timestamp) / 1000
+
+            let record = MessageRecord(
+                eventID: eventID,
+                roomID: roomID,
+                senderID: event.sender,
+                body: body,
+                formattedBody: formattedBody,
+                timestamp: timestamp,
+                isEdited: isEdited,
+                sendStatus: "sent",
+                transactionID: transactionID
+            )
+
+            if isEdited {
+                // Try update first; INSERT OR IGNORE handles the insert
+                try? database.updateMessageBody(
+                    eventID: eventID,
+                    body: body,
+                    formattedBody: formattedBody,
+                    isEdited: true
                 )
             }
+            try? database.insertMessage(record)
 
-        let reactions: [NebReaction] = msgLike.reactions.map { reaction in
-            NebReaction(
-                emoji: reaction.key,
-                count: reaction.senders.count,
-                senderIDs: reaction.senders.map(\.senderId),
-                includesMe: reaction.senders.contains { $0.senderId == myUserID }
+        case .unableToDecrypt:
+            let record = MessageRecord(
+                eventID: eventID,
+                roomID: roomID,
+                senderID: event.sender,
+                body: "\u{1F512} Encrypted message (verify this device to decrypt)",
+                timestamp: TimeInterval(event.timestamp) / 1000,
+                sendStatus: "sent",
+                transactionID: transactionID
             )
+            try? database.insertMessage(record)
+
+        default:
+            return
         }
 
-        return NebMessage(
-            id: eventID,
-            roomID: roomID,
-            senderID: event.sender,
-            senderDisplayName: senderName,
-            senderAvatarURL: senderAvatarURL,
-            body: body,
-            formattedBody: formattedBody,
-            timestamp: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000),
-            isOutgoing: event.isOwn,
-            sendStatus: sendStatus,
-            readReceipts: readReceipts,
-            reactions: reactions,
-            isEdited: isEdited,
-            isEditable: event.isEditable && event.isOwn,
-            isEmojiOnly: body.isEmojiOnly
-        )
+        // Write reactions
+        let reactionRecords = msgLike.reactions.flatMap { reaction in
+            reaction.senders.map { sender in
+                ReactionRecord(eventID: eventID, emoji: reaction.key, senderID: sender.senderId)
+            }
+        }
+        try? database.replaceReactions(eventID: eventID, reactions: reactionRecords)
+
+        // Write read receipts
+        for (userID, _) in event.readReceipts {
+            try? database.upsertReadReceipt(roomID: roomID, userID: userID, eventID: eventID)
+        }
     }
 }
