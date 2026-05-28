@@ -332,6 +332,120 @@ public final class NebDatabase: Sendable {
         }
     }
 
+    // MARK: - Rooms
+
+    /// Insert or replace a room record.
+    public func upsertRoom(_ room: RoomRecord) throws {
+        try dbQueue.write { db in
+            try room.upsert(db)
+        }
+    }
+
+    /// Delete a room by ID.
+    public func deleteRoom(roomID: String) throws {
+        try dbQueue.write { db in
+            try db.execute(
+                sql: "DELETE FROM rooms WHERE roomID = ?",
+                arguments: [roomID]
+            )
+        }
+    }
+
+    /// Fetch all room records.
+    public func fetchRooms() throws -> [RoomRecord] {
+        try dbQueue.read { db in
+            try RoomRecord.fetchAll(db)
+        }
+    }
+
+    /// Fetch rooms joined with their latest message, sorted by most recent activity.
+    public func fetchRoomList() throws -> [NebRoom] {
+        try dbQueue.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT r.*,
+                           m.body AS lastMessage,
+                           m.timestamp AS lastMessageTimestamp
+                    FROM rooms r
+                    LEFT JOIN (
+                        SELECT roomID, body, timestamp,
+                               ROW_NUMBER() OVER (PARTITION BY roomID ORDER BY timestamp DESC) AS rn
+                        FROM messages
+                    ) m ON r.roomID = m.roomID AND m.rn = 1
+                    ORDER BY COALESCE(m.timestamp, 0) DESC
+                    """
+            )
+            return rows.map { row in
+                let ts: Double? = row["lastMessageTimestamp"]
+                return NebRoom(
+                    id: row["roomID"],
+                    name: row["name"],
+                    avatarURL: row["avatarURL"],
+                    lastMessage: row["lastMessage"],
+                    lastMessageTimestamp: ts.map { Date(timeIntervalSince1970: $0) },
+                    unreadCount: UInt(row["unreadCount"] as Int),
+                    isDirect: row["isDirect"],
+                    directUserID: row["directUserID"],
+                    memberCount: UInt(row["memberCount"] as Int)
+                )
+            }
+        }
+    }
+
+    /// Observe the room list as an AsyncStream. Emits immediately with current rows,
+    /// then re-emits whenever the database changes. The stream ends when the caller cancels.
+    @MainActor
+    public func roomListObservation() -> AsyncStream<[NebRoom]> {
+        AsyncStream { continuation in
+            let observation = ValueObservation.tracking { db -> [NebRoom] in
+                let rows = try Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT r.*,
+                               m.body AS lastMessage,
+                               m.timestamp AS lastMessageTimestamp
+                        FROM rooms r
+                        LEFT JOIN (
+                            SELECT roomID, body, timestamp,
+                                   ROW_NUMBER() OVER (PARTITION BY roomID ORDER BY timestamp DESC) AS rn
+                            FROM messages
+                        ) m ON r.roomID = m.roomID AND m.rn = 1
+                        ORDER BY COALESCE(m.timestamp, 0) DESC
+                        """
+                )
+                return rows.map { row in
+                    let ts: Double? = row["lastMessageTimestamp"]
+                    return NebRoom(
+                        id: row["roomID"],
+                        name: row["name"],
+                        avatarURL: row["avatarURL"],
+                        lastMessage: row["lastMessage"],
+                        lastMessageTimestamp: ts.map { Date(timeIntervalSince1970: $0) },
+                        unreadCount: UInt(row["unreadCount"] as Int),
+                        isDirect: row["isDirect"],
+                        directUserID: row["directUserID"],
+                        memberCount: UInt(row["memberCount"] as Int)
+                    )
+                }
+            }
+            let cancellable = observation.start(
+                in: dbQueue,
+                scheduling: .immediate,
+                onError: { error in
+                    logger.error("roomListObservation error: \(error)")
+                    continuation.finish()
+                },
+                onChange: { rooms in
+                    continuation.yield(rooms)
+                }
+            )
+            continuation.onTermination = { _ in
+                cancellable.cancel()
+            }
+        }
+    }
+
     // MARK: - DM Assignments
 
     public func saveDMAssignment(directUserID: String, roomID: String) throws {
@@ -498,6 +612,18 @@ public final class NebDatabase: Sendable {
                     INSERT INTO messages_fts(rowid, body) VALUES (new.rowid, new.body);
                 END
                 """)
+        }
+
+        migrator.registerMigration("v3_rooms_table") { db in
+            try db.create(table: "rooms") { t in
+                t.column("roomID", .text).primaryKey()
+                t.column("name", .text).notNull()
+                t.column("avatarURL", .text)
+                t.column("unreadCount", .integer).notNull().defaults(to: 0)
+                t.column("isDirect", .boolean).notNull().defaults(to: false)
+                t.column("directUserID", .text)
+                t.column("memberCount", .integer).notNull().defaults(to: 0)
+            }
         }
 
         try migrator.migrate(dbQueue)

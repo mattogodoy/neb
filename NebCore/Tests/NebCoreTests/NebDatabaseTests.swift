@@ -163,6 +163,71 @@ import Testing
     #expect(results.first?.message.formattedBody == nil)
 }
 
+// MARK: - Room tests
+
+@Test func upsertAndFetchRoom() throws {
+    let db = try NebDatabase()
+    let room = RoomRecord(
+        roomID: "!room:x", name: "Test Room", avatarURL: nil,
+        unreadCount: 3, isDirect: false, directUserID: nil, memberCount: 5
+    )
+    try db.upsertRoom(room)
+    let rooms = try db.fetchRooms()
+    #expect(rooms.count == 1)
+    #expect(rooms.first?.name == "Test Room")
+    #expect(rooms.first?.unreadCount == 3)
+}
+
+@Test func upsertRoomUpdatesExisting() throws {
+    let db = try NebDatabase()
+    try db.upsertRoom(RoomRecord(roomID: "!room:x", name: "Old Name", unreadCount: 0, isDirect: false, memberCount: 2))
+    try db.upsertRoom(RoomRecord(roomID: "!room:x", name: "New Name", unreadCount: 5, isDirect: false, memberCount: 3))
+    let rooms = try db.fetchRooms()
+    #expect(rooms.count == 1)
+    #expect(rooms.first?.name == "New Name")
+    #expect(rooms.first?.unreadCount == 5)
+}
+
+@Test func deleteRoom() throws {
+    let db = try NebDatabase()
+    try db.upsertRoom(RoomRecord(roomID: "!room:x", name: "Room", unreadCount: 0, isDirect: false, memberCount: 1))
+    try db.deleteRoom(roomID: "!room:x")
+    let rooms = try db.fetchRooms()
+    #expect(rooms.isEmpty)
+}
+
+@Test func roomListIncludesLastMessage() throws {
+    let db = try NebDatabase()
+    try db.upsertRoom(RoomRecord(roomID: "!room:x", name: "Room", unreadCount: 0, isDirect: false, memberCount: 2))
+    try db.insertMessage(MessageRecord(eventID: "$evt1", roomID: "!room:x", senderID: "@alice:x", body: "Hello", timestamp: 1000))
+    try db.insertMessage(MessageRecord(eventID: "$evt2", roomID: "!room:x", senderID: "@bob:x", body: "World", timestamp: 2000))
+    let rooms = try db.fetchRoomList()
+    #expect(rooms.count == 1)
+    #expect(rooms.first?.lastMessage == "World")
+    #expect(rooms.first?.lastMessageTimestamp == Date(timeIntervalSince1970: 2000))
+}
+
+@Test func roomListSortedByLatestMessage() throws {
+    let db = try NebDatabase()
+    try db.upsertRoom(RoomRecord(roomID: "!old:x", name: "Old Room", unreadCount: 0, isDirect: false, memberCount: 1))
+    try db.upsertRoom(RoomRecord(roomID: "!new:x", name: "New Room", unreadCount: 0, isDirect: false, memberCount: 1))
+    try db.insertMessage(MessageRecord(eventID: "$evt1", roomID: "!old:x", senderID: "@alice:x", body: "Old msg", timestamp: 1000))
+    try db.insertMessage(MessageRecord(eventID: "$evt2", roomID: "!new:x", senderID: "@alice:x", body: "New msg", timestamp: 2000))
+    let rooms = try db.fetchRoomList()
+    #expect(rooms.first?.id == "!new:x")
+    #expect(rooms.last?.id == "!old:x")
+}
+
+@Test func roomWithNoMessagesAppearsLast() throws {
+    let db = try NebDatabase()
+    try db.upsertRoom(RoomRecord(roomID: "!empty:x", name: "Empty", unreadCount: 0, isDirect: false, memberCount: 1))
+    try db.upsertRoom(RoomRecord(roomID: "!active:x", name: "Active", unreadCount: 0, isDirect: false, memberCount: 1))
+    try db.insertMessage(MessageRecord(eventID: "$evt1", roomID: "!active:x", senderID: "@alice:x", body: "Hello", timestamp: 1000))
+    let rooms = try db.fetchRoomList()
+    #expect(rooms.first?.id == "!active:x")
+    #expect(rooms.last?.id == "!empty:x")
+}
+
 @Test func failStalePendingMessages() throws {
     let db = try NebDatabase()
     try db.insertMessage(MessageRecord(
