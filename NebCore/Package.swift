@@ -14,13 +14,18 @@ let package = Package(
         .package(
             url: "https://github.com/matrix-org/matrix-rust-components-swift",
             from: "26.5.13"
+        ),
+        .package(
+            url: "https://github.com/groue/GRDB.swift",
+            from: "7.0.0"
         )
     ],
     targets: [
         .target(
             name: "NebCore",
             dependencies: [
-                .product(name: "MatrixRustSDK", package: "matrix-rust-components-swift")
+                .product(name: "MatrixRustSDK", package: "matrix-rust-components-swift"),
+                .product(name: "GRDB", package: "GRDB.swift")
             ]
         ),
         .testTarget(
