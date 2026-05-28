@@ -11,6 +11,7 @@
 		0DFF9269C091F9A6700FEA1A /* TimelineViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B879077FB3F65C28A6B106 /* TimelineViewModelTests.swift */; };
 		14452F1E955C7F3A49A17023 /* MarkdownConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D7103138470729216C7402 /* MarkdownConverter.swift */; };
 		15CE8C371F1554A8A8D602C8 /* HTMLRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201AF83FAF9B6FBF5DAFEFDA /* HTMLRenderer.swift */; };
+		2B94B66CF4BCB8D10BEB5E11 /* Notification.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F3848C9F1B28FB044A424B /* Notification.swift */; };
 		2D739C11FE3DC015AB192453 /* DaySeparatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BA2BDB29809B4C287D18A7 /* DaySeparatorView.swift */; };
 		3207877F801727297C95BA12 /* LoginViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FEDF24CC592CFAD87CF2E7C /* LoginViewModelTests.swift */; };
 		35223A18A3599B748561DAA2 /* VerificationViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E276E5A8B8ED9E19B24C1934 /* VerificationViewModelTests.swift */; };
@@ -21,6 +22,7 @@
 		677A0DCC84798670DB64AE94 /* NewDMViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5B162AE523CA9C5BA1A337 /* NewDMViewModel.swift */; };
 		6B994CD079433D8C283EA500 /* HTMLRenderCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = F81717C619AAEC1806C86373 /* HTMLRenderCache.swift */; };
 		7B0EB0332324DE102076B0A2 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */; };
+		7FCC5FAD9AA1EC1B088D793A /* NotificationProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054056891B39DE7F057B9461 /* NotificationProtocol.swift */; };
 		838E4CB92918FF5E08FFD52B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82C30D683D99BE5A348941CF /* LoginView.swift */; };
 		83B57EBDD68462EB939E6D99 /* MessageComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB5117145C530E7DD757276 /* MessageComposerView.swift */; };
 		83DF145DC8577F84BCAF8641 /* MockAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EEAAFD47EC3F30496507FEA /* MockAuthService.swift */; };
@@ -63,6 +65,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		054056891B39DE7F057B9461 /* NotificationProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationProtocol.swift; sourceTree = "<group>"; };
 		076E0D2DC6A4ABFAA8CEE409 /* MockRoomService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRoomService.swift; sourceTree = "<group>"; };
 		0AD0B0E7E3A20C2EED6153D5 /* MockTypingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTypingService.swift; sourceTree = "<group>"; };
 		1292A80D0DE976126E22F973 /* NewDMSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDMSheet.swift; sourceTree = "<group>"; };
@@ -84,6 +87,7 @@
 		82C30D683D99BE5A348941CF /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9868BB8EAD630AA601C1BDD5 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		98D7103138470729216C7402 /* MarkdownConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownConverter.swift; sourceTree = "<group>"; };
+		A6F3848C9F1B28FB044A424B /* Notification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notification.swift; sourceTree = "<group>"; };
 		A999C636D9F3020B7D0E9787 /* TimelineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineViewModel.swift; sourceTree = "<group>"; };
 		ABCE3A05F93C5768B2871FAA /* NebApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NebApp.swift; sourceTree = "<group>"; };
 		B1409F45F78A380DDDA49B9C /* RoomRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomRowView.swift; sourceTree = "<group>"; };
@@ -97,7 +101,7 @@
 		C4703F2BF55FB41091716A00 /* DeviceVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceVerificationView.swift; sourceTree = "<group>"; };
 		C49DF09A31FF185152DC81A0 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditor.swift; sourceTree = "<group>"; };
 		C5F865AEBE26F67E8EC78563 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
-		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = NebCore; sourceTree = SOURCE_ROOT; };
+		D04A92B099BE10413361231F /* NebCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NebCore; path = NebCore; sourceTree = SOURCE_ROOT; };
 		D4A9A42E9CEF2F2E33992366 /* Neb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Neb.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC5B162AE523CA9C5BA1A337 /* NewDMViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDMViewModel.swift; sourceTree = "<group>"; };
 		DE07898CFAE3650811D5CA3B /* NewDMViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDMViewModelTests.swift; sourceTree = "<group>"; };
@@ -222,6 +226,7 @@
 				2B5647AAC9B5E1CB3A8D2F0A /* AppState.swift */,
 				3CAA00277FAEF93BECC66694 /* Neb.entitlements */,
 				ABCE3A05F93C5768B2871FAA /* NebApp.swift */,
+				F517948DBF1051D09FEAEAC6 /* Services */,
 				C22F81B17E3D84E086A07D5E /* Utilities */,
 				518BA7C975E576DA38758255 /* ViewModels */,
 				9750BE6ACEF19EA96DF3DC3B /* Views */,
@@ -275,6 +280,15 @@
 				145BD912A2D89307D0EC7E9B /* SidebarView.swift */,
 			);
 			path = Sidebar;
+			sourceTree = "<group>";
+		};
+		F517948DBF1051D09FEAEAC6 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A6F3848C9F1B28FB044A424B /* Notification.swift */,
+				054056891B39DE7F057B9461 /* NotificationProtocol.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -382,6 +396,8 @@
 				A093FC5817CA1B00DDBDB007 /* NebApp.swift in Sources */,
 				85437DFE20DBD0CC5157DA45 /* NewDMSheet.swift in Sources */,
 				677A0DCC84798670DB64AE94 /* NewDMViewModel.swift in Sources */,
+				2B94B66CF4BCB8D10BEB5E11 /* Notification.swift in Sources */,
+				7FCC5FAD9AA1EC1B088D793A /* NotificationProtocol.swift in Sources */,
 				ECBBEF01342C0A00BC9B14D7 /* QuickReactBar.swift in Sources */,
 				D663AF41A6C69470AA8A7162 /* ReactionBarView.swift in Sources */,
 				E3A35DBB96EC3C84FFAF2EBE /* ReadReceiptsView.swift in Sources */,
@@ -575,8 +591,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_LDFLAGS = "-Wl,-w";
-				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app1;
+				OTHER_LDFLAGS = (
+					"-Wl,-w",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app;
 				PRODUCT_NAME = Neb;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
@@ -598,8 +616,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_LDFLAGS = "-Wl,-w";
-				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app1;
+				OTHER_LDFLAGS = (
+					"-Wl,-w",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.neb.app;
 				PRODUCT_NAME = Neb;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;

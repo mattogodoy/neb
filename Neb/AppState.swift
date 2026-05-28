@@ -12,7 +12,7 @@ final class AppState {
     let roomAdapter: Room
     let devicesAdapter: Devices
     let securityAdapter: Security
-    let notificationAdapter: MatrixNotificationAdapter
+    let notificationAdapter: Notification
     let typingAdapter: MatrixTypingAdapter
     let database: NebDatabase
     let backfillWorker: BackfillWorker
@@ -33,7 +33,7 @@ final class AppState {
         let room = Room(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService }, database: database)
         let devices = Devices(clientProvider: { session.getClient() })
         let security = Security(clientProvider: { session.getClient() })
-        let notification = MatrixNotificationAdapter()
+        let notification = Notification()
         let typing = MatrixTypingAdapter(clientProvider: { session.getClient() }, roomListServiceProvider: { sync.roomListService })
         let backfill = BackfillWorker(
             clientProvider: { session.getClient() },

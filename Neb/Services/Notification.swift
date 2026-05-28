@@ -7,15 +7,15 @@ import AppKit
 
 private let logger = Logger(subsystem: "com.neb.app", category: "Notification")
 
-public final class MatrixNotificationAdapter: NotificationProtocol, @unchecked Sendable {
-    public init() {}
+final class Notification: NotificationProtocol, @unchecked Sendable {
+    init() {}
 
-    public func requestPermission() async throws -> Bool {
+    func requestPermission() async throws -> Bool {
         let center = UNUserNotificationCenter.current()
         return try await center.requestAuthorization(options: [.alert, .badge, .sound])
     }
 
-    public func postNotification(title: String, body: String, roomID: String) async {
+    func postNotification(title: String, body: String, roomID: String) async {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -36,7 +36,7 @@ public final class MatrixNotificationAdapter: NotificationProtocol, @unchecked S
         }
     }
 
-    public func updateBadgeCount(_ count: UInt) async {
+    func updateBadgeCount(_ count: UInt) async {
         if #available(macOS 13.0, iOS 16.0, *) {
             do {
                 try await UNUserNotificationCenter.current().setBadgeCount(Int(count))

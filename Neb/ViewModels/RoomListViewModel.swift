@@ -34,7 +34,7 @@ public final class RoomListViewModel {
     private var roomTypingUsers: [String: [NebUser]] = [:]
     @ObservationIgnored nonisolated(unsafe) private var typingTasks: [String: Task<Void, Never>] = [:]
 
-    public init(
+    init(
         syncService: any SyncProtocol,
         notificationService: (any NotificationProtocol)? = nil,
         typingService: (any TypingProtocol)? = nil
