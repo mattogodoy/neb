@@ -108,7 +108,6 @@ final class AppState {
         logger.info("Flushing \(pending.count) pending messages")
         for message in pending {
             do {
-                // Delete the pending row — Room.send() will create a fresh one
                 try database.deleteMessage(eventID: message.eventID)
                 try await roomAdapter.send(roomID: message.roomID, body: message.body)
             } catch {
