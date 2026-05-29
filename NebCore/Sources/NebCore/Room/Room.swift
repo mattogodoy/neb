@@ -500,67 +500,17 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             avatarURL: senderAvatarURL
         )
 
-        // Determine event/transaction ID
+        // Resolve the event ID. Items with only a transaction ID (local echoes
+        // not yet confirmed) are skipped — they'll reappear with a real event ID
+        // once the server confirms. This keeps reconciliation invisible to the
+        // timeline: one message, one row, one event ID.
         let eventID: String
-        var transactionID: String? = nil
         switch event.eventOrTransactionId {
         case .eventId(let id):
             eventID = id
-        case .transactionId(let id):
-            eventID = id
-            transactionID = id
+        case .transactionId(_):
+            return // local echo — wait for the real event ID
         }
-
-        // DEBUG: Log every event processed
-        logger.info("DIAG processItem: eventID=\(eventID) txnID=\(transactionID ?? "nil") localState=\(String(describing: event.localSendState)) sender=\(event.sender)")
-
-        // Handle local send state reconciliation
-        if let localState = event.localSendState {
-            switch localState {
-            case .sent(_):
-                // The local echo is confirmed. Delete the pending row — the
-                // real event will be (or already was) inserted as a regular
-                // timeline item without localSendState.
-                try? database.deleteMessage(eventID: eventID)
-                return
-            case .sendingFailed(_, _):
-                logger.info("DIAG .sendingFailed: eventID=\(eventID)")
-                // Insert the failed message if it doesn't exist yet, then update status.
-                if case .message(let msgContent) = msgLike.kind {
-                    let record = MessageRecord(
-                        eventID: eventID,
-                        roomID: roomID,
-                        senderID: event.sender,
-                        body: msgContent.body,
-                        timestamp: TimeInterval(event.timestamp) / 1000,
-                        sendStatus: "failed",
-                        transactionID: transactionID
-                    )
-                    try? database.insertMessage(record)
-                }
-                try? database.updateSendStatus(eventID: eventID, status: "failed")
-                return
-            case .notSentYet(_):
-                logger.info("DIAG .notSentYet: eventID=\(eventID)")
-                // Insert the pending message using the SDK's transaction ID.
-                // INSERT OR IGNORE prevents duplicates if called again.
-                if case .message(let msgContent) = msgLike.kind {
-                    let record = MessageRecord(
-                        eventID: eventID,
-                        roomID: roomID,
-                        senderID: event.sender,
-                        body: msgContent.body,
-                        timestamp: TimeInterval(event.timestamp) / 1000,
-                        sendStatus: "sending",
-                        transactionID: transactionID
-                    )
-                    try? database.insertMessage(record)
-                }
-                return
-            }
-        }
-
-        logger.info("DIAG inserting message: eventID=\(eventID) txnID=\(transactionID ?? "nil")")
 
         // Process message content
         switch msgLike.kind {
@@ -584,12 +534,10 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                 formattedBody: formattedBody,
                 timestamp: timestamp,
                 isEdited: isEdited,
-                sendStatus: "sent",
-                transactionID: transactionID
+                sendStatus: "sent"
             )
 
             if isEdited {
-                // Try update first; INSERT OR IGNORE handles the insert
                 try? database.updateMessageBody(
                     eventID: eventID,
                     body: body,
@@ -606,8 +554,7 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                 senderID: event.sender,
                 body: "\u{1F512} Encrypted message (verify this device to decrypt)",
                 timestamp: TimeInterval(event.timestamp) / 1000,
-                sendStatus: "sent",
-                transactionID: transactionID
+                sendStatus: "sent"
             )
             try? database.insertMessage(record)
 
