@@ -500,19 +500,64 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             avatarURL: senderAvatarURL
         )
 
-        // Resolve the event ID. Items with only a transaction ID (local echoes
-        // not yet confirmed) are skipped — they'll reappear with a real event ID
-        // once the server confirms. This keeps reconciliation invisible to the
-        // timeline: one message, one row, one event ID.
+        // Determine event/transaction ID
         let eventID: String
+        var transactionID: String? = nil
         switch event.eventOrTransactionId {
         case .eventId(let id):
             eventID = id
-        case .transactionId(_):
-            return // local echo — wait for the real event ID
+        case .transactionId(let id):
+            eventID = id
+            transactionID = id
         }
 
-        // Process message content
+        // Handle local send states. The SDK manages the send lifecycle:
+        //   .notSentYet → insert with txn ID as PK, status "sending"
+        //   .sent        → delete the txn row (real event arrives separately)
+        //   .sendingFailed → insert/update with txn ID as PK, status "failed"
+        if let localState = event.localSendState {
+            switch localState {
+            case .notSentYet(_):
+                if case .message(let msgContent) = msgLike.kind {
+                    let record = MessageRecord(
+                        eventID: eventID,
+                        roomID: roomID,
+                        senderID: event.sender,
+                        body: msgContent.body,
+                        timestamp: TimeInterval(event.timestamp) / 1000,
+                        sendStatus: "sending",
+                        transactionID: transactionID
+                    )
+                    try? database.insertMessage(record)
+                }
+                return
+
+            case .sent(_):
+                // The local echo is confirmed. Delete the txn row — the real
+                // event will arrive as a regular timeline item and be inserted
+                // with its permanent event ID.
+                try? database.deleteMessage(eventID: eventID)
+                return
+
+            case .sendingFailed(_, _):
+                if case .message(let msgContent) = msgLike.kind {
+                    let record = MessageRecord(
+                        eventID: eventID,
+                        roomID: roomID,
+                        senderID: event.sender,
+                        body: msgContent.body,
+                        timestamp: TimeInterval(event.timestamp) / 1000,
+                        sendStatus: "failed",
+                        transactionID: transactionID
+                    )
+                    try? database.insertMessage(record)
+                }
+                try? database.updateSendStatus(eventID: eventID, status: "failed")
+                return
+            }
+        }
+
+        // Process confirmed message content
         switch msgLike.kind {
         case .message(let msgContent):
             let body = msgContent.body

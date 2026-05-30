@@ -53,7 +53,6 @@ final class AppState {
     }
 
     func onLoggedIn() async {
-        do { try database.failStalePendingMessages() } catch { logger.error("Failed to clean pending messages: \(error)") }
         AvatarImageCache.shared.setClientProvider { [weak self] in self?.session.getClient() }
         roomListViewModel = RoomListViewModel(
             roomService: roomAdapter,
@@ -78,7 +77,6 @@ final class AppState {
             for await online in self.sync.statusStream() {
                 self.isOnline = online
                 if online {
-                    await self.flushPendingMessages()
                     if !hasSetupVerification {
                         hasSetupVerification = true
                         do { try await self.securityAdapter.setupVerificationListener() } catch { logger.error("Failed to setup verification listener: \(error)") }
@@ -99,19 +97,6 @@ final class AppState {
             guard let self else { return }
             for await status in self.devicesAdapter.verificationStatusStream() {
                 self.deviceVerificationStatus = status
-            }
-        }
-    }
-
-    private func flushPendingMessages() async {
-        guard let pending = try? database.fetchPendingMessages(), !pending.isEmpty else { return }
-        logger.info("Flushing \(pending.count) pending messages")
-        for message in pending {
-            do {
-                try database.deleteMessage(eventID: message.eventID)
-                try await roomAdapter.send(roomID: message.roomID, body: message.body)
-            } catch {
-                logger.error("Failed to flush pending message \(message.eventID): \(error)")
             }
         }
     }
