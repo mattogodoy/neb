@@ -14,6 +14,10 @@ public final class TimelineViewModel {
     public private(set) var hasLoadedInitialTimeline = false
     public var composerText: String = ""
     public var editingMessage: NebMessage?
+    public var isSearching = false
+    public var searchQuery = ""
+    public private(set) var searchResultIDs: [String] = []
+    public private(set) var currentSearchIndex: Int = 0
     public let initialUnreadCount: UInt
 
     private let roomID: String
@@ -22,11 +26,13 @@ public final class TimelineViewModel {
     private let currentUserID: String
     private let typingService: (any TypingProtocol)?
     private let syncService: (any SyncProtocol)?
+    private let searchService: (any SearchProtocol)?
     private var messageLimit = 50
     @ObservationIgnored nonisolated(unsafe) private var observationTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var syncTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var typingDebounceTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) private var searchDebounceTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var isCurrentlyTyping = false
 
     public init(
@@ -36,6 +42,7 @@ public final class TimelineViewModel {
         currentUserID: String,
         typingService: (any TypingProtocol)? = nil,
         syncService: (any SyncProtocol)? = nil,
+        searchService: (any SearchProtocol)? = nil,
         initialUnreadCount: UInt = 0
     ) {
         self.roomID = roomID
@@ -44,6 +51,7 @@ public final class TimelineViewModel {
         self.currentUserID = currentUserID
         self.typingService = typingService
         self.syncService = syncService
+        self.searchService = searchService
         self.initialUnreadCount = initialUnreadCount
         startObserving()
         startTypingObserving()
@@ -78,6 +86,7 @@ public final class TimelineViewModel {
         observationTask?.cancel()
         typingTask?.cancel()
         typingDebounceTask?.cancel()
+        searchDebounceTask?.cancel()
         syncTask?.cancel()
         let roomService = self.roomService
         let roomID = self.roomID
@@ -159,6 +168,55 @@ public final class TimelineViewModel {
         } catch { logger.error("Failed to edit message \(editing.id) in \(self.roomID): \(error)") }
         editingMessage = nil
         composerText = ""
+    }
+
+    public func performSearch() {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchDebounceTask?.cancel()
+
+        guard query.count >= 2 else {
+            searchResultIDs = []
+            currentSearchIndex = 0
+            return
+        }
+
+        searchDebounceTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, let self else { return }
+            do {
+                let results = try await self.searchService?.search(query: query, roomID: self.roomID) ?? []
+                self.searchResultIDs = results.map(\.eventID)
+                self.currentSearchIndex = 0
+            } catch {
+                logger.error("Search failed in \(self.roomID): \(error)")
+                self.searchResultIDs = []
+                self.currentSearchIndex = 0
+            }
+        }
+    }
+
+    public func nextSearchResult() {
+        guard !searchResultIDs.isEmpty else { return }
+        currentSearchIndex = (currentSearchIndex + 1) % searchResultIDs.count
+    }
+
+    public func previousSearchResult() {
+        guard !searchResultIDs.isEmpty else { return }
+        currentSearchIndex = (currentSearchIndex - 1 + searchResultIDs.count) % searchResultIDs.count
+    }
+
+    public func clearSearch() {
+        isSearching = false
+        searchQuery = ""
+        searchResultIDs = []
+        currentSearchIndex = 0
+        searchDebounceTask?.cancel()
+        searchDebounceTask = nil
+    }
+
+    public var highlightedMessageID: String? {
+        guard !searchResultIDs.isEmpty, searchResultIDs.indices.contains(currentSearchIndex) else { return nil }
+        return searchResultIDs[currentSearchIndex]
     }
 
     private func stopTyping() {

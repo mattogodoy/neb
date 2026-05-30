@@ -9,6 +9,7 @@ struct MessageBubbleView: View {
     let homeserverURL: String
     let onToggleReaction: (String) -> Void
     var onEdit: (() -> Void)?
+    var isHighlighted: Bool = false
 
     @State private var isHovered = false
     @State private var showQuickReact = false
@@ -58,6 +59,14 @@ struct MessageBubbleView: View {
                     ReadReceiptsView(receipts: message.readReceipts, homeserverURL: homeserverURL)
                 }
                 .padding(.top, 4)
+            }
+        }
+        .padding(.leading, isHighlighted ? 4 : 0)
+        .overlay(alignment: .leading) {
+            if isHighlighted {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.accentColor)
+                    .frame(width: 3)
             }
         }
         .overlay {

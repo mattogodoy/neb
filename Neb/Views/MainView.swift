@@ -8,6 +8,7 @@ struct MainView: View {
     var securityServiceProvider: (() -> any SecurityProtocol)?
     var typingServiceProvider: (() -> any TypingProtocol)?
     var syncServiceProvider: (() -> any SyncProtocol)?
+    var searchServiceProvider: (() -> any SearchProtocol)?
     var isOnline: Bool = true
     var currentUserID: String?
     var database: NebDatabase?
@@ -87,6 +88,7 @@ struct MainView: View {
                     currentUserID: currentUserID ?? "",
                     typingService: typingServiceProvider?(),
                     syncService: syncServiceProvider?(),
+                    searchService: searchServiceProvider?(),
                     initialUnreadCount: room?.unreadCount ?? 0
                 )
             } else {
