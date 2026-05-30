@@ -39,6 +39,33 @@ struct MessageComposerView: View {
                 .padding(.bottom, 2)
             }
 
+            if let replyMsg = viewModel.replyingToMessage {
+                HStack(spacing: 4) {
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color.accentColor)
+                        .frame(width: 2, height: 28)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Replying to \(replyMsg.senderDisplayName)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Color.accentColor)
+                        Text(replyMsg.body)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Button(action: { viewModel.cancelReply() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, 2)
+            }
+
             HStack(alignment: .bottom, spacing: 8) {
                 RichTextEditor(
                     plainText: $viewModel.composerText,

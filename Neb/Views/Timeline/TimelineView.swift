@@ -14,6 +14,7 @@ struct TimelineView: View {
     @State private var hasSetupComplete = false
     @State private var scrollCorrectionTask: Task<Void, Never>?
     @State private var messageToDelete: NebMessage?
+    @State private var temporaryHighlightID: String?
 
     private enum ScrollTarget {
         static let newSeparator = "new-separator"
@@ -59,10 +60,16 @@ struct TimelineView: View {
                                     viewModel.editingMessage = message
                                     viewModel.composerText = message.body
                                 } : nil,
-                                isHighlighted: message.id == viewModel.highlightedMessageID,
+                                isHighlighted: message.id == viewModel.highlightedMessageID || message.id == temporaryHighlightID,
                                 onDelete: message.isOutgoing ? {
                                     messageToDelete = message
-                                } : nil
+                                } : nil,
+                                onReply: {
+                                    viewModel.startReply(message: message)
+                                },
+                                onQuoteTap: { originalID in
+                                    scrollToAndHighlight(originalID, with: proxy)
+                                }
                             )
                             .padding(.horizontal, 12)
                             .padding(.top, (layout?.groupPosition == .first || layout?.groupPosition == .alone) ? 8 : 2)
@@ -238,6 +245,19 @@ struct TimelineView: View {
     private func checkContactVerification() async {
         guard let userID = directUserID, let provider = securityServiceProvider else { return }
         isContactVerified = await provider().isUserVerified(userID: userID)
+    }
+
+    private func scrollToAndHighlight(_ messageID: String, with proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            proxy.scrollTo(messageID, anchor: .center)
+        }
+        temporaryHighlightID = messageID
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            if temporaryHighlightID == messageID {
+                withAnimation { temporaryHighlightID = nil }
+            }
+        }
     }
 
 }

@@ -11,6 +11,8 @@ struct MessageBubbleView: View {
     var onEdit: (() -> Void)?
     var isHighlighted: Bool = false
     var onDelete: (() -> Void)?
+    var onReply: (() -> Void)?
+    var onQuoteTap: ((String) -> Void)?
 
     @State private var isHovered = false
     @State private var showQuickReact = false
@@ -93,6 +95,12 @@ struct MessageBubbleView: View {
 
     private func showContextMenu() {
         let menu = NSMenu()
+        let replyItem = NSMenuItem(title: "Reply", action: nil, keyEquivalent: "")
+        replyItem.image = NSImage(systemSymbolName: "arrowshape.turn.up.left", accessibilityDescription: nil)
+        menu.addItem(replyItem)
+        replyItem.target = ContextMenuTarget.shared
+        replyItem.action = #selector(ContextMenuTarget.replyToMessage)
+        ContextMenuTarget.shared.onReply = { [onReply] in onReply?() }
         if message.isEditable {
             let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
             editItem.image = NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)
@@ -109,10 +117,8 @@ struct MessageBubbleView: View {
             deleteItem.action = #selector(ContextMenuTarget.deleteMessage)
             ContextMenuTarget.shared.onDelete = { [onDelete] in onDelete?() }
         }
-        if !menu.items.isEmpty {
-            DispatchQueue.main.async {
-                menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
-            }
+        DispatchQueue.main.async {
+            menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
         }
     }
 
@@ -155,22 +161,25 @@ struct MessageBubbleView: View {
                 }
             }
         } else {
-            HStack(alignment: .lastTextBaseline, spacing: 4) {
-                renderedBodyOutgoing
-                    .font(.system(size: 13))
+            VStack(alignment: .trailing, spacing: 2) {
+                replyQuoteView
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    renderedBodyOutgoing
+                        .font(.system(size: 13))
 
-                HStack(spacing: 2) {
-                    if message.isEdited {
-                        Text("edited")
-                            .font(.system(size: 9))
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                    Text(message.timestamp, style: .time)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.white.opacity(0.6))
+                    HStack(spacing: 2) {
+                        if message.isEdited {
+                            Text("edited")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.4))
+                        }
+                        Text(message.timestamp, style: .time)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.white.opacity(0.6))
 
-                    if message.readReceipts.isEmpty {
-                        sendStatusIcon
+                        if message.readReceipts.isEmpty {
+                            sendStatusIcon
+                        }
                     }
                 }
             }
@@ -193,6 +202,35 @@ struct MessageBubbleView: View {
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 10))
                 .foregroundStyle(.red)
+        }
+    }
+
+    @ViewBuilder
+    private var replyQuoteView: some View {
+        if let senderName = message.replyToSenderName {
+            Button(action: {
+                if let replyID = message.replyToEventID {
+                    onQuoteTap?(replyID)
+                }
+            }) {
+                HStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color.accentColor)
+                        .frame(width: 2)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(senderName)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                        Text(message.replyToBody ?? "[message deleted]")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.leading, 6)
+                    .padding(.vertical, 2)
+                }
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -231,19 +269,22 @@ struct MessageBubbleView: View {
                                 .foregroundStyle(.secondary)
                         }
                     } else {
-                        HStack(alignment: .lastTextBaseline, spacing: 4) {
-                            renderedBody
-                                .font(.system(size: 13))
+                        VStack(alignment: .leading, spacing: 2) {
+                            replyQuoteView
+                            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                                renderedBody
+                                    .font(.system(size: 13))
 
-                            HStack(spacing: 2) {
-                                if message.isEdited {
-                                    Text("edited")
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(.secondary.opacity(0.6))
+                                HStack(spacing: 2) {
+                                    if message.isEdited {
+                                        Text("edited")
+                                            .font(.system(size: 9))
+                                            .foregroundStyle(.secondary.opacity(0.6))
+                                    }
+                                    Text(message.timestamp, style: .time)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.secondary)
                                 }
-                                Text(message.timestamp, style: .time)
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.secondary)
                             }
                         }
                         .padding(.horizontal, 10)
@@ -285,6 +326,9 @@ struct MessageBubbleView: View {
                     Color.clear.frame(width: 22, height: 22)
                 }
             }
+        }
+        .onTapGesture(count: 2) {
+            onReply?()
         }
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
@@ -367,6 +411,7 @@ private class ContextMenuTarget: NSObject {
     static let shared = ContextMenuTarget()
     var onEdit: (() -> Void)?
     var onDelete: (() -> Void)?
+    var onReply: (() -> Void)?
 
     @objc func editMessage() {
         onEdit?()
@@ -374,5 +419,9 @@ private class ContextMenuTarget: NSObject {
 
     @objc func deleteMessage() {
         onDelete?()
+    }
+
+    @objc func replyToMessage() {
+        onReply?()
     }
 }
