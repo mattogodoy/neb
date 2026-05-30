@@ -13,6 +13,7 @@ enum FormattingAction {
 
 class RichTextEditorState: ObservableObject {
     var applyFormatting: ((FormattingAction) -> Void)?
+    var clearText: (() -> Void)?
 }
 
 class AutoSizingScrollView: NSScrollView {
@@ -75,10 +76,14 @@ struct RichTextEditor: NSViewRepresentable {
 
         context.coordinator.textView = textView
 
-        // Wire formatting callback
+        // Wire formatting and clear callbacks
         let coordinator = context.coordinator
         editorState?.applyFormatting = { action in
             coordinator.applyFormatting(action)
+        }
+        editorState?.clearText = { [weak textView] in
+            textView?.string = ""
+            textView?.enclosingScrollView?.invalidateIntrinsicContentSize()
         }
 
         // Focus on appear

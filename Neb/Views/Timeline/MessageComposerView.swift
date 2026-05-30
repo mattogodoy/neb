@@ -168,6 +168,7 @@ struct MessageComposerView: View {
     private func send(attributed: NSAttributedString) {
         let markdown = MarkdownConverter.convert(attributed)
         viewModel.composerText = ""
+        editorState.clearText?()
         emojiQuery = nil
         emojiResults = []
         Task {
@@ -178,6 +179,7 @@ struct MessageComposerView: View {
     private func sendPlain() {
         let text = viewModel.composerText
         viewModel.composerText = ""
+        editorState.clearText?()
         emojiQuery = nil
         emojiResults = []
         Task {
