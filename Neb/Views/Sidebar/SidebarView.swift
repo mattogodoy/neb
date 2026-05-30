@@ -5,6 +5,7 @@ struct SidebarView: View {
     @Bindable var viewModel: RoomListViewModel
     var homeserverURL: String = ""
     var onNewDM: () -> Void
+    var onNewRoom: () -> Void
 
     @State private var dmSectionExpanded = true
     @State private var groupSectionExpanded = true
@@ -59,6 +60,12 @@ struct SidebarView: View {
             .listStyle(.sidebar)
         }
         .toolbar {
+            ToolbarItem {
+                Button(action: onNewRoom) {
+                    Image(systemName: "plus.bubble")
+                }
+                .help("New Room")
+            }
             ToolbarItem {
                 Button(action: onNewDM) {
                     Image(systemName: "square.and.pencil")

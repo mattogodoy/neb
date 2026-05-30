@@ -17,6 +17,7 @@ struct MainView: View {
     var homeserverURL: String = ""
     var onLogout: (() -> Void)?
     @State private var showNewDM = false
+    @State private var showNewRoom = false
     @State private var showDeviceVerification = false
     @State private var showLogoutConfirmation = false
     @State private var timelineViewModel: TimelineViewModel?
@@ -26,7 +27,8 @@ struct MainView: View {
             SidebarView(
                 viewModel: roomListViewModel,
                 homeserverURL: homeserverURL,
-                onNewDM: { showNewDM = true }
+                onNewDM: { showNewDM = true },
+                onNewRoom: { showNewRoom = true }
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
         } detail: {
@@ -100,6 +102,16 @@ struct MainView: View {
         .sheet(isPresented: $showNewDM) {
             NewDMSheet(
                 viewModel: NewDMViewModel(roomService: roomsServiceProvider!()),
+                onCreated: { roomID in
+                    if let room = roomListViewModel.allRooms.first(where: { $0.id == roomID }) {
+                        roomListViewModel.selectRoom(room)
+                    }
+                }
+            )
+        }
+        .sheet(isPresented: $showNewRoom) {
+            NewRoomSheet(
+                viewModel: NewRoomViewModel(roomService: roomsServiceProvider!()),
                 onCreated: { roomID in
                     if let room = roomListViewModel.allRooms.first(where: { $0.id == roomID }) {
                         roomListViewModel.selectRoom(room)
