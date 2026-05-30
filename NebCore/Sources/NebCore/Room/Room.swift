@@ -115,6 +115,7 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
 
         Task {
             if let members = try? await room.membersNoSync() {
+                var memberRecords: [MemberRecord] = []
                 while let chunk = members.nextChunk(chunkSize: 50) {
                     for member in chunk {
                         listener.cacheProfile(
@@ -127,8 +128,24 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
                             displayName: member.displayName ?? member.userId,
                             avatarURL: member.avatarUrl
                         )
+                        let membershipStr: String = switch member.membership {
+                        case .join: "join"
+                        case .invite: "invite"
+                        case .leave: "leave"
+                        case .ban: "ban"
+                        case .knock: "knock"
+                        case .custom(let v): v
+                        }
+                        memberRecords.append(MemberRecord(
+                            roomID: roomID,
+                            userID: member.userId,
+                            displayName: member.displayName,
+                            avatarURL: member.avatarUrl,
+                            membership: membershipStr
+                        ))
                     }
                 }
+                try? database.upsertMembers(memberRecords)
             }
         }
     }
@@ -257,9 +274,16 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
     // MARK: - MembersProtocol
 
     public func members(roomID: String) async throws -> [NebUser] {
+        // Read from local DB first
+        if let cached = try? database.fetchMembers(roomID: roomID), !cached.isEmpty {
+            return cached.map { NebUser(id: $0.userID, displayName: $0.displayName, avatarURL: $0.avatarURL) }
+        }
+
+        // Fallback to SDK if DB is empty (first load before sync writes members)
         guard let client = clientProvider() else { throw NebError.notLoggedIn }
         guard let room = try client.getRoom(roomId: roomID) else { throw NebError.roomNotFound(roomID) }
         var users: [NebUser] = []
+        var memberRecords: [MemberRecord] = []
         let membersIterator = try await room.membersNoSync()
         while let chunk = membersIterator.nextChunk(chunkSize: 50) {
             for member in chunk {
@@ -268,8 +292,24 @@ public final class Room: TimelineProtocol, MembersProtocol, RoomsProtocol, Searc
                     displayName: member.displayName,
                     avatarURL: member.avatarUrl
                 ))
+                let membershipStr: String = switch member.membership {
+                case .join: "join"
+                case .invite: "invite"
+                case .leave: "leave"
+                case .ban: "ban"
+                case .knock: "knock"
+                case .custom(let v): v
+                }
+                memberRecords.append(MemberRecord(
+                    roomID: roomID,
+                    userID: member.userId,
+                    displayName: member.displayName,
+                    avatarURL: member.avatarUrl,
+                    membership: membershipStr
+                ))
             }
         }
+        try? database.upsertMembers(memberRecords)
         return users
     }
 

@@ -154,22 +154,35 @@ public final class Sync: SyncProtocol, @unchecked Sendable {
                     avatarURL = info.avatarUrl
                     memberCount = info.activeMembersCount
 
-                    if isDirect {
-                        let myUserID = try? self.clientProvider()?.userId()
-                        let members = try await room.membersNoSync()
-                        while let chunk = members.nextChunk(chunkSize: 10) {
-                            for member in chunk {
-                                if member.userId != myUserID && member.membership == .join {
-                                    directUserID = member.userId
-                                    if avatarURL == nil {
-                                        avatarURL = member.avatarUrl
-                                    }
-                                    break
+                    let myUserID = try? self.clientProvider()?.userId()
+                    let members = try await room.membersNoSync()
+                    var memberRecords: [MemberRecord] = []
+                    while let chunk = members.nextChunk(chunkSize: 50) {
+                        for member in chunk {
+                            let membershipStr: String = switch member.membership {
+                            case .join: "join"
+                            case .invite: "invite"
+                            case .leave: "leave"
+                            case .ban: "ban"
+                            case .knock: "knock"
+                            case .custom(let v): v
+                            }
+                            memberRecords.append(MemberRecord(
+                                roomID: roomID,
+                                userID: member.userId,
+                                displayName: member.displayName,
+                                avatarURL: member.avatarUrl,
+                                membership: membershipStr
+                            ))
+                            if isDirect && member.userId != myUserID && member.membership == .join {
+                                directUserID = member.userId
+                                if avatarURL == nil {
+                                    avatarURL = member.avatarUrl
                                 }
                             }
-                            if directUserID != nil { break }
                         }
                     }
+                    try? database.upsertMembers(memberRecords)
                 } catch {
                     logger.warning("Failed to get room info for \(roomID): \(error.localizedDescription)")
                 }

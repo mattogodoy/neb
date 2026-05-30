@@ -482,6 +482,63 @@ public final class NebDatabase: Sendable {
         }
     }
 
+    // MARK: - Members
+
+    /// Insert or update a room member.
+    public func upsertMember(_ member: MemberRecord) throws {
+        try dbQueue.write { db in
+            try member.upsert(db)
+        }
+    }
+
+    /// Insert or update multiple room members in a single transaction.
+    public func upsertMembers(_ members: [MemberRecord]) throws {
+        try dbQueue.write { db in
+            for member in members {
+                try member.upsert(db)
+            }
+        }
+    }
+
+    /// Fetch all members for a room with a given membership (default: "join").
+    public func fetchMembers(roomID: String, membership: String = "join") throws -> [MemberRecord] {
+        try dbQueue.read { db in
+            try MemberRecord.fetchAll(
+                db,
+                sql: "SELECT * FROM members WHERE roomID = ? AND membership = ? ORDER BY displayName ASC",
+                arguments: [roomID, membership]
+            )
+        }
+    }
+
+    /// Observe members for a room as an AsyncStream.
+    @MainActor
+    public func observeMembers(roomID: String, membership: String = "join") -> AsyncStream<[MemberRecord]> {
+        AsyncStream { continuation in
+            let observation = ValueObservation.tracking { db -> [MemberRecord] in
+                try MemberRecord.fetchAll(
+                    db,
+                    sql: "SELECT * FROM members WHERE roomID = ? AND membership = ? ORDER BY displayName ASC",
+                    arguments: [roomID, membership]
+                )
+            }
+            let cancellable = observation.start(
+                in: dbQueue,
+                scheduling: .immediate,
+                onError: { error in
+                    logger.error("observeMembers error for \(roomID): \(error)")
+                    continuation.finish()
+                },
+                onChange: { members in
+                    continuation.yield(members)
+                }
+            )
+            continuation.onTermination = { _ in
+                cancellable.cancel()
+            }
+        }
+    }
+
     // MARK: - DM Assignments
 
     public func saveDMAssignment(directUserID: String, roomID: String) throws {
@@ -660,6 +717,18 @@ public final class NebDatabase: Sendable {
                 t.column("directUserID", .text)
                 t.column("memberCount", .integer).notNull().defaults(to: 0)
             }
+        }
+
+        migrator.registerMigration("v4_members_table") { db in
+            try db.create(table: "members") { t in
+                t.column("roomID", .text).notNull()
+                t.column("userID", .text).notNull()
+                t.column("displayName", .text)
+                t.column("avatarURL", .text)
+                t.column("membership", .text).notNull().defaults(to: "join")
+                t.primaryKey(["roomID", "userID"])
+            }
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_members_room ON members (roomID)")
         }
 
         try migrator.migrate(dbQueue)

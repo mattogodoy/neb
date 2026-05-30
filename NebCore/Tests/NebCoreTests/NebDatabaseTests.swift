@@ -280,3 +280,52 @@ import Testing
     #expect(results[0].eventID == "~send-1")
     #expect(results[0].body == "hello")
 }
+
+@Test func upsertAndFetchMembers() throws {
+    let db = try NebDatabase()
+
+    let members = [
+        MemberRecord(roomID: "!room:x", userID: "@alice:x", displayName: "Alice", membership: "join"),
+        MemberRecord(roomID: "!room:x", userID: "@bob:x", displayName: "Bob", membership: "join"),
+        MemberRecord(roomID: "!room:x", userID: "@charlie:x", displayName: "Charlie", membership: "leave"),
+    ]
+    try db.upsertMembers(members)
+
+    let joined = try db.fetchMembers(roomID: "!room:x", membership: "join")
+    #expect(joined.count == 2)
+    #expect(joined[0].userID == "@alice:x")
+    #expect(joined[1].userID == "@bob:x")
+
+    let left = try db.fetchMembers(roomID: "!room:x", membership: "leave")
+    #expect(left.count == 1)
+    #expect(left[0].userID == "@charlie:x")
+}
+
+@Test func upsertMemberUpdatesExisting() throws {
+    let db = try NebDatabase()
+
+    let member = MemberRecord(roomID: "!room:x", userID: "@alice:x", displayName: "Alice", membership: "join")
+    try db.upsertMember(member)
+
+    let updated = MemberRecord(roomID: "!room:x", userID: "@alice:x", displayName: "Alice Updated", avatarURL: "mxc://new", membership: "join")
+    try db.upsertMember(updated)
+
+    let fetched = try db.fetchMembers(roomID: "!room:x")
+    #expect(fetched.count == 1)
+    #expect(fetched[0].displayName == "Alice Updated")
+    #expect(fetched[0].avatarURL == "mxc://new")
+}
+
+@Test func membersArePerRoom() throws {
+    let db = try NebDatabase()
+
+    try db.upsertMember(MemberRecord(roomID: "!room1:x", userID: "@alice:x", displayName: "Alice", membership: "join"))
+    try db.upsertMember(MemberRecord(roomID: "!room2:x", userID: "@alice:x", displayName: "Alice", membership: "join"))
+    try db.upsertMember(MemberRecord(roomID: "!room2:x", userID: "@bob:x", displayName: "Bob", membership: "join"))
+
+    let room1 = try db.fetchMembers(roomID: "!room1:x")
+    #expect(room1.count == 1)
+
+    let room2 = try db.fetchMembers(roomID: "!room2:x")
+    #expect(room2.count == 2)
+}
