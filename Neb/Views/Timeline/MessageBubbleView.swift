@@ -10,6 +10,7 @@ struct MessageBubbleView: View {
     let onToggleReaction: (String) -> Void
     var onEdit: (() -> Void)?
     var isHighlighted: Bool = false
+    var onDelete: (() -> Void)?
 
     @State private var isHovered = false
     @State private var showQuickReact = false
@@ -22,6 +23,10 @@ struct MessageBubbleView: View {
     private var isEmojiOnly: Bool { message.isEmojiOnly }
 
     private var renderedBody: Text {
+        if message.body.isEmpty {
+            return Text("[message deleted]")
+                .italic()
+        }
         if let attributed = HTMLRenderCache.shared.render(message.formattedBody) {
             return Text(attributed)
         }
@@ -29,6 +34,10 @@ struct MessageBubbleView: View {
     }
 
     private var renderedBodyOutgoing: Text {
+        if message.body.isEmpty {
+            return Text("[message deleted]")
+                .italic()
+        }
         if let attributed = HTMLRenderCache.shared.render(message.formattedBody, foregroundColor: .white) {
             return Text(attributed)
         }
@@ -91,6 +100,14 @@ struct MessageBubbleView: View {
             editItem.target = ContextMenuTarget.shared
             editItem.action = #selector(ContextMenuTarget.editMessage)
             ContextMenuTarget.shared.onEdit = { [onEdit] in onEdit?() }
+        }
+        if message.isOutgoing && message.sendStatus == .sent {
+            let deleteItem = NSMenuItem(title: "Delete", action: nil, keyEquivalent: "")
+            deleteItem.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
+            menu.addItem(deleteItem)
+            deleteItem.target = ContextMenuTarget.shared
+            deleteItem.action = #selector(ContextMenuTarget.deleteMessage)
+            ContextMenuTarget.shared.onDelete = { [onDelete] in onDelete?() }
         }
         if !menu.items.isEmpty {
             DispatchQueue.main.async {
@@ -349,8 +366,13 @@ private struct RightClickHandler: NSViewRepresentable {
 private class ContextMenuTarget: NSObject {
     static let shared = ContextMenuTarget()
     var onEdit: (() -> Void)?
+    var onDelete: (() -> Void)?
 
     @objc func editMessage() {
         onEdit?()
+    }
+
+    @objc func deleteMessage() {
+        onDelete?()
     }
 }

@@ -13,6 +13,7 @@ struct TimelineView: View {
     @State private var firstUnreadMessageID: String?
     @State private var hasSetupComplete = false
     @State private var scrollCorrectionTask: Task<Void, Never>?
+    @State private var messageToDelete: NebMessage?
 
     private enum ScrollTarget {
         static let newSeparator = "new-separator"
@@ -58,7 +59,10 @@ struct TimelineView: View {
                                     viewModel.editingMessage = message
                                     viewModel.composerText = message.body
                                 } : nil,
-                                isHighlighted: message.id == viewModel.highlightedMessageID
+                                isHighlighted: message.id == viewModel.highlightedMessageID,
+                                onDelete: message.isOutgoing ? {
+                                    messageToDelete = message
+                                } : nil
                             )
                             .padding(.horizontal, 12)
                             .padding(.top, (layout?.groupPosition == .first || layout?.groupPosition == .alone) ? 8 : 2)
@@ -121,6 +125,20 @@ struct TimelineView: View {
                     securityService: provider()
                 )
             }
+        }
+        .alert("Delete Message", isPresented: Binding(
+            get: { messageToDelete != nil },
+            set: { if !$0 { messageToDelete = nil } }
+        )) {
+            Button("Cancel", role: .cancel) { messageToDelete = nil }
+            Button("Delete", role: .destructive) {
+                if let msg = messageToDelete {
+                    Task { await viewModel.deleteMessage(eventID: msg.id) }
+                }
+                messageToDelete = nil
+            }
+        } message: {
+            Text("Delete this message? This can't be undone.")
         }
         .task {
             await checkContactVerification()

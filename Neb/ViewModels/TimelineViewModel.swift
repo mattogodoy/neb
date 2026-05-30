@@ -214,6 +214,14 @@ public final class TimelineViewModel {
         searchDebounceTask = nil
     }
 
+    public func deleteMessage(eventID: String) async {
+        do {
+            try await roomService.delete(roomID: roomID, eventID: eventID, reason: nil)
+        } catch {
+            logger.error("Failed to delete message \(eventID) in \(self.roomID): \(error)")
+        }
+    }
+
     public var highlightedMessageID: String? {
         guard !searchResultIDs.isEmpty, searchResultIDs.indices.contains(currentSearchIndex) else { return nil }
         return searchResultIDs[currentSearchIndex]

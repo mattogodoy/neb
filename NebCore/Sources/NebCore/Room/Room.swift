@@ -670,6 +670,9 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             )
             try? database.insertMessage(record)
 
+        case .redacted:
+            try? database.redactMessage(eventID: eventID)
+
         default:
             return
         }
