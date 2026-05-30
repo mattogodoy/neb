@@ -13,6 +13,7 @@ public struct MessageRecord: Codable, FetchableRecord, PersistableRecord, Sendab
     public var isEdited: Bool
     public var sendStatus: String
     public var transactionID: String?
+    public var replyToEventID: String?
 
     public init(
         eventID: String,
@@ -23,7 +24,8 @@ public struct MessageRecord: Codable, FetchableRecord, PersistableRecord, Sendab
         timestamp: Double,
         isEdited: Bool = false,
         sendStatus: String = "sent",
-        transactionID: String? = nil
+        transactionID: String? = nil,
+        replyToEventID: String? = nil
     ) {
         self.eventID = eventID
         self.roomID = roomID
@@ -34,5 +36,6 @@ public struct MessageRecord: Codable, FetchableRecord, PersistableRecord, Sendab
         self.isEdited = isEdited
         self.sendStatus = sendStatus
         self.transactionID = transactionID
+        self.replyToEventID = replyToEventID
     }
 }

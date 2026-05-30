@@ -33,13 +33,14 @@ public final class NebDatabase: Sendable {
                 sql: """
                     INSERT OR IGNORE INTO messages
                         (eventID, roomID, senderID, body, formattedBody, timestamp,
-                         isEdited, sendStatus, transactionID)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         isEdited, sendStatus, transactionID, replyToEventID)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                 arguments: [
                     message.eventID, message.roomID, message.senderID,
                     message.body, message.formattedBody, message.timestamp,
-                    message.isEdited, message.sendStatus, message.transactionID
+                    message.isEdited, message.sendStatus, message.transactionID,
+                    message.replyToEventID
                 ]
             )
         }
@@ -147,9 +148,15 @@ public final class NebDatabase: Sendable {
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT messages.*, profiles.displayName, profiles.avatarURL
+                    SELECT messages.*,
+                           profiles.displayName,
+                           profiles.avatarURL,
+                           rp.displayName AS replyToSenderName,
+                           rm.body AS replyToBody
                     FROM messages
                     LEFT JOIN profiles ON messages.senderID = profiles.userID
+                    LEFT JOIN messages rm ON messages.replyToEventID = rm.eventID
+                    LEFT JOIN profiles rp ON rm.senderID = rp.userID
                     WHERE messages.roomID = ?
                     ORDER BY messages.timestamp ASC
                     LIMIT ?
@@ -330,9 +337,15 @@ public final class NebDatabase: Sendable {
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT messages.*, profiles.displayName, profiles.avatarURL
+                    SELECT messages.*,
+                           profiles.displayName,
+                           profiles.avatarURL,
+                           rp.displayName AS replyToSenderName,
+                           rm.body AS replyToBody
                     FROM messages
                     LEFT JOIN profiles ON messages.senderID = profiles.userID
+                    LEFT JOIN messages rm ON messages.replyToEventID = rm.eventID
+                    LEFT JOIN profiles rp ON rm.senderID = rp.userID
                     WHERE messages.roomID = ?
                     ORDER BY messages.timestamp ASC
                     LIMIT ?
@@ -729,6 +742,12 @@ public final class NebDatabase: Sendable {
                 t.primaryKey(["roomID", "userID"])
             }
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_members_room ON members (roomID)")
+        }
+
+        migrator.registerMigration("v5_reply_column") { db in
+            try db.alter(table: "messages") { t in
+                t.add(column: "replyToEventID", .text)
+            }
         }
 
         try migrator.migrate(dbQueue)

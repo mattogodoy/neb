@@ -14,6 +14,7 @@ public final class TimelineViewModel {
     public private(set) var hasLoadedInitialTimeline = false
     public var composerText: String = ""
     public var editingMessage: NebMessage?
+    public var replyingToMessage: NebMessage?
     public var isSearching = false
     public var searchQuery = ""
     public private(set) var searchResultIDs: [String] = []
@@ -118,8 +119,14 @@ public final class TimelineViewModel {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         stopTyping()
+        let replyTo = replyingToMessage
+        replyingToMessage = nil
         do {
-            try await roomService.send(roomID: roomID, body: trimmed)
+            if let replyTo {
+                try await roomService.sendReply(roomID: roomID, body: trimmed, replyToEventID: replyTo.id)
+            } else {
+                try await roomService.send(roomID: roomID, body: trimmed)
+            }
         } catch { logger.error("Failed to send message in \(self.roomID): \(error)") }
     }
 
@@ -214,6 +221,14 @@ public final class TimelineViewModel {
         searchDebounceTask = nil
     }
 
+    public func startReply(message: NebMessage) {
+        replyingToMessage = message
+    }
+
+    public func cancelReply() {
+        replyingToMessage = nil
+    }
+
     public func deleteMessage(eventID: String) async {
         do {
             try await roomService.delete(roomID: roomID, eventID: eventID, reason: nil)
@@ -279,7 +294,10 @@ public final class TimelineViewModel {
             reactions: [],
             isEdited: m.isEdited,
             isEditable: isOutgoing && m.sendStatus == "sent",
-            isEmojiOnly: m.body.isEmojiOnly
+            isEmojiOnly: m.body.isEmojiOnly,
+            replyToEventID: m.replyToEventID,
+            replyToSenderName: row.replyToSenderName,
+            replyToBody: row.replyToBody
         )
     }
 

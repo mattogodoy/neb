@@ -637,6 +637,7 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             }
 
             let timestamp = TimeInterval(event.timestamp) / 1000
+            let replyToEventID = msgLike.inReplyTo?.eventId()
 
             let record = MessageRecord(
                 eventID: eventID,
@@ -646,7 +647,8 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                 formattedBody: formattedBody,
                 timestamp: timestamp,
                 isEdited: isEdited,
-                sendStatus: "sent"
+                sendStatus: "sent",
+                replyToEventID: replyToEventID
             )
 
             if isEdited {

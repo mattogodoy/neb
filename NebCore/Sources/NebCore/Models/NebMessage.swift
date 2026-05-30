@@ -48,6 +48,9 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
     public var isEdited: Bool
     public var isEditable: Bool
     public var isEmojiOnly: Bool
+    public var replyToEventID: String?
+    public var replyToSenderName: String?
+    public var replyToBody: String?
 
     public init(
         id: String,
@@ -64,7 +67,10 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         reactions: [NebReaction] = [],
         isEdited: Bool = false,
         isEditable: Bool = false,
-        isEmojiOnly: Bool = false
+        isEmojiOnly: Bool = false,
+        replyToEventID: String? = nil,
+        replyToSenderName: String? = nil,
+        replyToBody: String? = nil
     ) {
         self.id = id
         self.roomID = roomID
@@ -81,6 +87,9 @@ public struct NebMessage: Identifiable, Equatable, Sendable {
         self.isEdited = isEdited
         self.isEditable = isEditable
         self.isEmojiOnly = isEmojiOnly
+        self.replyToEventID = replyToEventID
+        self.replyToSenderName = replyToSenderName
+        self.replyToBody = replyToBody
     }
 }
 
