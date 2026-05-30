@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import NebCore
 
@@ -79,6 +80,7 @@ struct MainView: View {
             Text("You'll need to log in again and re-verify this device.")
         }
         .onChange(of: roomListViewModel.selectedRoom?.id) { _, newID in
+            timelineViewModel?.clearSearch()
             if let newID, let db = database {
                 let room = roomListViewModel.allRooms.first { $0.id == newID }
                 timelineViewModel = TimelineViewModel(
@@ -112,6 +114,15 @@ struct MainView: View {
                     isAlreadyVerified: deviceVerificationStatus == .verified,
                     securityService: provider()
                 )
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleFindBar)) { _ in
+            if timelineViewModel != nil {
+                if timelineViewModel?.isSearching == true {
+                    timelineViewModel?.clearSearch()
+                } else {
+                    timelineViewModel?.isSearching = true
+                }
             }
         }
     }

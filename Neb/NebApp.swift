@@ -71,6 +71,16 @@ struct NebApp: App {
                 }
                 .keyboardShortcut("n", modifiers: [.command])
             }
+            CommandGroup(after: .textEditing) {
+                Button("Find in Conversation") {
+                    NotificationCenter.default.post(name: .toggleFindBar, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+            }
         }
     }
+}
+
+extension Foundation.Notification.Name {
+    static let toggleFindBar = Foundation.Notification.Name("toggleFindBar")
 }

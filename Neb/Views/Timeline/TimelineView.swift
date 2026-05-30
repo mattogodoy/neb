@@ -21,6 +21,11 @@ struct TimelineView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if viewModel.isSearching {
+                FindBarView(viewModel: viewModel)
+                Divider()
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -52,7 +57,8 @@ struct TimelineView: View {
                                 onEdit: message.isEditable ? {
                                     viewModel.editingMessage = message
                                     viewModel.composerText = message.body
-                                } : nil
+                                } : nil,
+                                isHighlighted: message.id == viewModel.highlightedMessageID
                             )
                             .padding(.horizontal, 12)
                             .padding(.top, (layout?.groupPosition == .first || layout?.groupPosition == .alone) ? 8 : 2)
@@ -79,6 +85,12 @@ struct TimelineView: View {
                 }
                 .onChange(of: viewModel.messages.last?.id) { oldID, newID in
                     scrollAfterLiveMessageIfNeeded(from: oldID, to: newID, with: proxy)
+                }
+                .onChange(of: viewModel.highlightedMessageID) { _, newID in
+                    guard let newID else { return }
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo(newID, anchor: .center)
+                    }
                 }
             }
 
