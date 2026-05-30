@@ -366,6 +366,8 @@ public final class NebDatabase: Sendable {
         }
     }
 
+
+
     // MARK: - Rooms
 
     /// Insert or replace a room record.
