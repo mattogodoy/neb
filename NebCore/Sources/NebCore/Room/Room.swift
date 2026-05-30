@@ -422,6 +422,8 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
     private let lock = NSLock()
     nonisolated(unsafe) private var items: [TimelineItem] = []
     nonisolated(unsafe) private var profileCache: [String: (name: String, avatarURL: String?)] = [:]
+    /// Transaction IDs of items we've written to the DB as "sending".
+    nonisolated(unsafe) private var knownPendingTxnIDs: Set<String> = []
 
     init(roomID: String, myUserID: String, database: NebDatabase) {
         self.roomID = roomID
@@ -468,6 +470,25 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             }
         }
 
+        // Collect current transaction IDs still in the items array
+        var currentTxnIDs: Set<String> = []
+        for item in items {
+            if let event = item.asEvent() {
+                if case .transactionId(let id) = event.eventOrTransactionId {
+                    currentTxnIDs.insert(id)
+                }
+            }
+        }
+
+        // Any txn IDs we previously wrote to DB that are no longer in items
+        // have been confirmed — delete them from the DB
+        let confirmedTxnIDs = knownPendingTxnIDs.subtracting(currentTxnIDs)
+        for txnID in confirmedTxnIDs {
+            try? database.deleteMessage(eventID: txnID)
+            diagLog("  confirmed txn removed: \(txnID)")
+        }
+        knownPendingTxnIDs = currentTxnIDs
+
         // Process all current items and write to database
         for item in items {
             processItem(item)
@@ -475,6 +496,20 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         lock.unlock()
 
         logger.info("Timeline \(self.roomID): processed \(self.items.count) items")
+    }
+
+    private func diagLog(_ msg: String) {
+        let path = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Neb", isDirectory: true)
+            .appendingPathComponent("timeline-diag.log")
+        let line = "\(Date()) \(msg)\n"
+        if let handle = try? FileHandle(forWritingTo: path) {
+            handle.seekToEndOfFile()
+            handle.write(line.data(using: .utf8)!)
+            handle.closeFile()
+        } else {
+            try? line.data(using: .utf8)!.write(to: path)
+        }
     }
 
     private func processItem(_ item: TimelineItem) {
@@ -511,6 +546,8 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
             transactionID = id
         }
 
+        diagLog("processItem: eventOrTxnId=\(event.eventOrTransactionId) localState=\(String(describing: event.localSendState)) sender=\(event.sender)")
+
         // Handle local send states. The SDK manages the send lifecycle:
         //   .notSentYet → insert with txn ID as PK, status "sending"
         //   .sent        → delete the txn row (real event arrives separately)
@@ -518,6 +555,10 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
         if let localState = event.localSendState {
             switch localState {
             case .notSentYet(_):
+                diagLog("  .notSentYet: inserting with eventID=\(eventID) txnID=\(transactionID ?? "nil")")
+                if let txnID = transactionID {
+                    knownPendingTxnIDs.insert(txnID)
+                }
                 if case .message(let msgContent) = msgLike.kind {
                     let record = MessageRecord(
                         eventID: eventID,
@@ -533,19 +574,11 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                 return
 
             case .sent(_):
-                // The local echo is confirmed. Delete the txn row — the real
-                // event will arrive as a regular timeline item and be inserted
-                // with its permanent event ID.
-                // The row was inserted with the txn ID as its PK, so delete
-                // by txn ID (via the transactionID column).
-                if let transactionID {
-                    try? database.deleteMessageByTransaction(transactionID: transactionID)
-                } else {
-                    try? database.deleteMessage(eventID: eventID)
-                }
+                diagLog("  .sent: eventID=\(eventID) — txn cleanup handled by diff tracking")
                 return
 
             case .sendingFailed(_, _):
+                diagLog("  .sendingFailed: eventID=\(eventID) txnID=\(transactionID ?? "nil")")
                 if case .message(let msgContent) = msgLike.kind {
                     let record = MessageRecord(
                         eventID: eventID,
@@ -562,6 +595,8 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                 return
             }
         }
+
+        diagLog("  regular insert: eventID=\(eventID)")
 
         // Process confirmed message content
         switch msgLike.kind {
