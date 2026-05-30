@@ -94,6 +94,16 @@ public final class NebDatabase: Sendable {
         }
     }
 
+    /// Delete a message by its transactionID column.
+    public func deleteMessageByTransaction(transactionID: String) throws {
+        try dbQueue.write { db in
+            try db.execute(
+                sql: "DELETE FROM messages WHERE transactionID = ?",
+                arguments: [transactionID]
+            )
+        }
+    }
+
     /// Clear body and formattedBody for a redacted message.
     public func redactMessage(eventID: String) throws {
         try dbQueue.write { db in

@@ -536,7 +536,13 @@ private final class NebTimelineListener: TimelineListener, @unchecked Sendable {
                 // The local echo is confirmed. Delete the txn row — the real
                 // event will arrive as a regular timeline item and be inserted
                 // with its permanent event ID.
-                try? database.deleteMessage(eventID: eventID)
+                // The row was inserted with the txn ID as its PK, so delete
+                // by txn ID (via the transactionID column).
+                if let transactionID {
+                    try? database.deleteMessageByTransaction(transactionID: transactionID)
+                } else {
+                    try? database.deleteMessage(eventID: eventID)
+                }
                 return
 
             case .sendingFailed(_, _):
