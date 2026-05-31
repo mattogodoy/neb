@@ -76,13 +76,6 @@ struct TimelineView: View {
                             .id(message.id)
                         }
 
-                        if !viewModel.typingUsers.isEmpty {
-                            TypingIndicatorView(users: viewModel.typingUsers)
-                                .padding(.horizontal, 12)
-                                .padding(.top, 8)
-                                .transition(.opacity)
-                                .id("typing-indicator")
-                        }
                     }
                     .padding(.vertical, 8)
 
@@ -102,6 +95,15 @@ struct TimelineView: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(newID, anchor: .center)
                     }
+                }
+            }
+            .overlay(alignment: .bottomLeading) {
+                if !viewModel.typingUsers.isEmpty {
+                    TypingIndicatorView(users: viewModel.typingUsers)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 4)
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.2), value: viewModel.typingUsers.isEmpty)
                 }
             }
 
@@ -216,11 +218,10 @@ struct TimelineView: View {
     }
 
     private func scrollAfterLiveMessageIfNeeded(from oldID: String?, to newID: String?, with proxy: ScrollViewProxy) {
-        guard hasSetupComplete, oldID != newID, let lastMessage = viewModel.messages.last else { return }
+        guard hasSetupComplete, oldID != newID else { return }
 
         Task { await viewModel.markAsRead() }
 
-        guard lastMessage.isOutgoing else { return }
         firstUnreadMessageID = nil
         scrollCorrectionTask?.cancel()
 
